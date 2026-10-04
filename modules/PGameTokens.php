@@ -298,6 +298,10 @@ abstract class PGameTokens extends PGameBasic {
         if ($location === "dev_null") {
             return false;
         }
+        if ($attr == "content" && startsWith($location, "discard_")) {
+            // discard piles (discard_main, discard_prelude, ...) are never visible, not all are listed as locations
+            return false;
+        }
 
         if ($this->isConsideredLocation($location)) {
             $info = $this->getAllRules($location, null);
