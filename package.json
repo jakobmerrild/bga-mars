@@ -13,6 +13,7 @@
     "test": "XDEBUG_MODE=off phpunit --display-deprecations --display-warnings  --bootstrap modules/_autoload.php --colors=always modules/tests",
     "predeploy": "php8.4  modules/_testpredeploy.php",
     "build:material": "php8.4 ./misc/other/genmat.php misc/*.csv",
+    "stage": "node ./misc/other/stage.js",
     "remove:colonies": "node ./misc/other/genoptions.js -remove 108",
     "add:colonies": "php8.4 ./misc/other/genmat.php misc/colo_material.csv && node ./misc/other/genoptions.js",
     "jstest": "TS_NODE_PROJECT=tests/tsconfig.test.json mocha -r ts-node/register tests/**/*.spec.ts",
