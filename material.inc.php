@@ -8373,7 +8373,7 @@ $this->token_types = [
   'location' => 'map_hexes',
   'x' => 5,
   'y' => 5,
-  'r' => '4nm,t',
+  'r' => '4nm+t',
 ],
  'hex_6_5@m3' => [  //
   'location' => 'map_hexes',

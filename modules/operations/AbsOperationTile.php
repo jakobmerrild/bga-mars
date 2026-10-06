@@ -153,13 +153,14 @@ abstract class AbsOperationTile extends AbsOperation {
 
     /**
      * M€ that can be gained from ocean adjacency while resolving placement on $location:
-     * oceans adjacent to the hex itself, plus best placement of an ocean granted by the hex bonus (i.e. Hellas South Pole)
+     * oceans adjacent to the hex itself, plus best placement of an ocean granted by the hex bonus,
+     * directly (i.e. Hellas South Pole) or via temperature bonus (i.e. Vastitas Borealis center)
      */
     function getPotentialOceanRebate($location, $rules) {
         $rebate = 2 * count($this->getAdjecentHexesOfType($location, MA_TILE_OCEAN));
         $expr = $this->game->parseOpExpression($rules);
         $args = $expr->op == "!" ? [$rules] : array_map(fn($arg) => OpExpression::str($arg), $expr->args);
-        if (!in_array("w", $args)) {
+        if (!in_array("w", $args) && !(in_array("t", $args) && $this->getNextTemperatureBonus() == "w")) {
             return $rebate;
         }
         $max = $this->game->getRulesFor($this->game->getTrackerId("", "w"), "max", 0);
@@ -174,6 +175,17 @@ abstract class AbsOperationTile extends AbsOperation {
             $best = max($best, count($this->getAdjecentHexesOfType($hex, MA_TILE_OCEAN)));
         }
         return $rebate + 2 * $best;
+    }
+
+    function getNextTemperatureBonus() {
+        $current = $this->game->getTrackerValue("", "t");
+        $max = $this->game->getRulesFor($this->game->getTrackerId("", "t"), "max", 0);
+        if ($current >= $max) {
+            return "";
+        }
+        $v = $current + 2;
+        $nvalue = $v >= 0 ? $v : "n" . -$v;
+        return $this->game->getRulesFor("param_t_{$nvalue}", "r", "");
     }
 
     function canPayWithRebate($color, $rules, $rebate) {

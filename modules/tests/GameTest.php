@@ -1148,6 +1148,26 @@ final class GameTest extends TestCase {
         $this->assertEquals(MA_ERR_MANDATORYEFFECT, $op->checkMandatoryEffect($color, $hex));
     }
 
+    public function testVastitasCenterOceanRebate() {
+        $m = $this->game(3);
+        $color = PCOLOR;
+        $hex = "hex_5_5";
+        $this->assertEquals("4nm+t", $m->getRulesFor($hex));
+        $op = $m->getOperationInstanceFromType("forest", $color, 1);
+        $m->setTrackerValue("", "t", -2);
+        $m->setTrackerValue($color, "m", 0);
+        // no oceans on the map yet, ocean from temperature bonus gives no rebate
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $op->checkMandatoryEffect($color, $hex));
+        // two adjacent oceans: placing the temperature bonus ocean next to them gives 4 M€
+        $m->effect_placeTile($color, "tile_3_1", "hex_8_5");
+        $m->effect_placeTile($color, "tile_3_2", "hex_7_6");
+        $m->setTrackerValue($color, "m", 0);
+        $this->assertEquals(MA_OK, $op->checkMandatoryEffect($color, $hex));
+        // temperature step does not reach the ocean bonus
+        $m->setTrackerValue("", "t", -4);
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $op->checkMandatoryEffect($color, $hex));
+    }
+
     public function testHasTag() {
         $m = $this->game();
         $card_id = $m->mtFindByName("Moss");
