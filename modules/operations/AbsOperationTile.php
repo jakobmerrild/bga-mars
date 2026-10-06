@@ -140,18 +140,56 @@ abstract class AbsOperationTile extends AbsOperation {
         if ($rules) {
             $op = $this->game->getOperationInstanceFromType("$rules", $color, 1);
             if ($op->isVoid()) {
-                // its void because of ME payment however if we have oceans adjacent it can compensate
-                // ocean bonus
-                $oceans = $this->getAdjecentHexesOfType($location, MA_TILE_OCEAN);
-                $c = count($oceans);
-                if ($c > 0) {
-                    // not totally cosher but better then before
+                // its void because of ME payment however ocean rebates gained during placement can compensate
+                $rebate = $this->getPotentialOceanRebate($location, $rules);
+                if ($rebate > 0 && $this->canPayWithRebate($color, $rules, $rebate)) {
                     return MA_OK;
                 }
                 return MA_ERR_MANDATORYEFFECT;
             }
         }
         return 0;
+    }
+
+    /**
+     * M€ that can be gained from ocean adjacency while resolving placement on $location:
+     * oceans adjacent to the hex itself, plus best placement of an ocean granted by the hex bonus (i.e. Hellas South Pole)
+     */
+    function getPotentialOceanRebate($location, $rules) {
+        $rebate = 2 * count($this->getAdjecentHexesOfType($location, MA_TILE_OCEAN));
+        $expr = $this->game->parseOpExpression($rules);
+        $args = $expr->op == "!" ? [$rules] : array_map(fn($arg) => OpExpression::str($arg), $expr->args);
+        if (!in_array("w", $args)) {
+            return $rebate;
+        }
+        $max = $this->game->getRulesFor($this->game->getTrackerId("", "w"), "max", 0);
+        if ($this->game->getTrackerValue("", "w") >= $max) {
+            return $rebate;
+        }
+        $best = 0;
+        foreach ($this->getPlanetMap() as $hex => $info) {
+            if ($hex === $location || !isset($info["ocean"]) || $this->checkOccupied($info)) {
+                continue;
+            }
+            $best = max($best, count($this->getAdjecentHexesOfType($hex, MA_TILE_OCEAN)));
+        }
+        return $rebate + 2 * $best;
+    }
+
+    function canPayWithRebate($color, $rules, $rebate) {
+        $expr = $this->game->parseOpExpression($rules);
+        $args = $expr->op == "!" ? [$rules] : array_map(fn($arg) => OpExpression::str($arg), $expr->args);
+        foreach ($args as $arg) {
+            $matches = null;
+            if (!preg_match("/^(\d+)nm$/", $arg, $matches)) {
+                continue;
+            }
+            $cost = (int) $matches[1] - $rebate;
+            if ($cost > 0 && $this->game->getOperationInstanceFromType("{$cost}nm", $color, 1)->isVoid()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     function checkCityPlacement($color, $ohex, $info, $map) {

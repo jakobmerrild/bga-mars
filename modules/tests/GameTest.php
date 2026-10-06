@@ -1130,6 +1130,24 @@ final class GameTest extends TestCase {
         $this->assertEquals(true, !$op->isVoid());
     }
 
+    public function testHellasSouthPoleOceanRebate() {
+        $m = $this->game(2);
+        $color = PCOLOR;
+        $hex = "hex_5_9";
+        $this->assertEquals("6nm+w", $m->getRulesFor($hex));
+        $op = $m->getOperationInstanceFromType("forest", $color, 1);
+        $m->setTrackerValue($color, "m", 2);
+        // no oceans on the map yet, ocean from bonus gives no rebate
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $op->checkMandatoryEffect($color, $hex));
+        // two adjacent oceans: placing the bonus ocean next to them gives 4 M€
+        $m->effect_placeTile($color, "tile_3_1", "hex_7_5");
+        $m->effect_placeTile($color, "tile_3_2", "hex_8_5");
+        $m->setTrackerValue($color, "m", 2);
+        $this->assertEquals(MA_OK, $op->checkMandatoryEffect($color, $hex));
+        $m->setTrackerValue($color, "m", 1);
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $op->checkMandatoryEffect($color, $hex));
+    }
+
     public function testHasTag() {
         $m = $this->game();
         $card_id = $m->mtFindByName("Moss");
