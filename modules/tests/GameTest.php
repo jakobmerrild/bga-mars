@@ -4,79 +4,6 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
-require_once "terraformingmars.game.php";
-require_once "TokensInMem.php";
-
-define("PCOLOR", "008000");
-define("BCOLOR", "0000ff");
-
-class GameUT extends terraformingmars {
-    var $multimachine;
-    var $xtable;
-    var $map_number = 0;
-    var $var_colonies = 0;
-    function __construct() {
-        include "./material.inc.php";
-        include "./states.inc.php";
-        parent::__construct();
-        $this->_setPlayerBasicInfoFromColors([PCOLOR, BCOLOR]);
-        $this->gamestate->_setStates($machinestates);
-
-        $this->tokens = new TokensInMem();
-        $this->xtable = [];
-        $this->machine = new MachineInMem($this, "machine", "main", $this->xtable);
-        $this->multimachine = new MachineInMem($this, "machine", "multi", $this->xtable);
-        $this->_setCurrentPlayerId(array_key_first($this->loadPlayersBasicInfos()));
-    }
-
-    function init(int $map = 0, int $colonies = 0) {
-        $this->map_number = $map;
-        $this->var_colonies = $colonies;
-        $this->adjustedMaterial(true);
-        $this->createTokens();
-        $this->gamestate->changeActivePlayer((int)$this->getCurrentPlayerId());
-        $this->gamestate->jumpToState(STATE_PLAYER_TURN_CHOICE);
-        return $this;
-    }
-
-    function clean_cache() {
-        $this->map = null;
-    }
-
-    function getMapNumber() {
-        return $this->map_number;
-    }
-
-    function isColoniesVariant() {
-        return $this->var_colonies;
-    }
-
-    function setListerts(array $l) {
-        $this->eventListners = $l;
-    }
-
-    function getMultiMachine() {
-        return $this->multimachine;
-    }
-
-
-
-    function fakeUserAction($op, $target = null, bool $no_stack = false) {
-        $args = ["op_info" => $op];
-        if ($target !== null) {
-            $args["target"] = $target;
-        }
-        $count = $this->saction_resolve($op, $args);
-        if ($no_stack) {
-            return $count;
-        }
-        $this->saction_stack($count, $op);
-        return $count;
-    }
-
-    // override/stub methods here that access db and stuff
-}
-
 final class GameTest extends TestCase {
     var $game;
 
@@ -138,6 +65,41 @@ final class GameTest extends TestCase {
         $public = $m->privateArgsFor($m->arg_playerTurnChoice(), $other_player_id);
         $this->assertArrayHasKey("ooturn", $public["_private"]);
         $this->assertStringNotContainsString($cardId, toJson($public));
+    }
+
+    public function testAllDatasHidesDiscard() {
+        $m = $this->game();
+        $cardId = "card_main_1";
+        $m->tokens->moveToken($cardId, "discard_main", 0);
+
+        $data = $m->getAllDatasForTest();
+        $this->assertArrayNotHasKey($cardId, $data["tokens"]);
+        $this->assertEquals(1, $data["counters"]["counter_discard_main"]["counter_value"]);
+    }
+
+    public function testAllDatasHidesPreludeDeckAndDiscard() {
+        $m = $this->game();
+        $m->tokens->createToken("card_prelude_P11", "deck_prelude", 0);
+        $m->tokens->createToken("card_prelude_P12", "discard_prelude", 0);
+
+        $data = $m->getAllDatasForTest();
+        $this->assertArrayNotHasKey("card_prelude_P11", $data["tokens"]);
+        $this->assertArrayNotHasKey("card_prelude_P12", $data["tokens"]);
+    }
+
+    public function testFinsetupDiscardsCorpAndPreludePrivately() {
+        $m = $this->game();
+        $m->tokens->moveToken("card_corp_1", "hand_" . PCOLOR, 0);
+        $m->tokens->moveToken("card_corp_2", "draw_" . PCOLOR, 0);
+        $m->tokens->createToken("card_prelude_P11", "draw_" . PCOLOR, 0);
+
+        $m->getOperationInstanceFromType("finsetup", PCOLOR)->action_resolve([]);
+
+        $this->assertEquals("limbo", $m->tokens->getTokenLocation("card_corp_2"));
+        $this->assertEquals("limbo", $m->tokens->getTokenLocation("card_prelude_P11"));
+        $public = toJson(array_filter($m->debugNotifs, fn($notif) => $notif["player_id"] == 0));
+        $this->assertStringNotContainsString("card_corp_2", $public);
+        $this->assertStringNotContainsString("card_prelude_P11", $public);
     }
 
     public function testEvalute() {
@@ -888,7 +850,7 @@ final class GameTest extends TestCase {
 
     public function testListeners() {
         $m = $this->game();
-        $m->setListerts([
+        $m->setListeners([
             "card_1" => ["e" => "play_card:nop;onPay_card:2m", "owner" => PCOLOR, "key" => "card_1"],
             "card_2" => ["e" => "onPay_cardSpaceEvent:2m", "owner" => PCOLOR, "key" => "card_2"],
         ]);
@@ -1095,30 +1057,70 @@ final class GameTest extends TestCase {
         $this->assertEquals(21, $m->tokens->getTokenState("tracker_tr_$color"));
     }
 
-    public function testLavaFlowsHellas() {
-        $m = $this->game(2);
-        $color = PCOLOR;
-        $m->tokens->setTokenState("tracker_t", +6);
+    private function playLavaFlowsRules(GameUT $m, int $temp) {
+        $m->tokens->setTokenState("tracker_t", $temp);
         $card_id = $m->mtFindByName("Lava Flows");
-        $r = $m->getRulesFor($card_id);
-        $m->putInEffectPool(PCOLOR, $r, $card_id);
+        $m->putInEffectPool(PCOLOR, $m->getRulesFor($card_id), $card_id);
         $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
         $m->st_gameDispatch();
         $tops = $m->machine->getTopOperations();
+        $this->assertEqualsCanonicalizing(["tile(vol)", "2t"], array_column($tops, "type"));
         foreach ($tops as $op) {
-            if ($op["type"] == "tile(vol)") {
-                continue;
-            }
-            if ($op["type"] == "2t") {
-                continue;
-            }
-            $this->assertTrue(false, "Unexpected operation " . $op["type"]);
+            $this->assertFalse($m->machine->isOrdered($op), "player must be able to pick 2t first");
         }
+        return $tops;
+    }
+
+    public function testLavaFlowsHellas() {
+        $m = $this->game(2);
+        $this->playLavaFlowsRules($m, 6);
+        $card_id = $m->mtFindByName("Lava Flows");
+        $r = $m->getRulesFor($card_id);
         $op = $m->getOperationInstanceFromType("tile(vol)", PCOLOR, 1, $card_id);
         $this->assertEquals(true, !$op->isVoid());
         /** @var ComplexOperation */
         $op = $m->getOperationInstanceFromType($r, PCOLOR, 1, $card_id);
         $this->assertEquals(true, !$op->isVoid());
+    }
+
+    private function occupyVolcanos(GameUT $m, int $leaveFree = 0) {
+        $volcanos = array_keys(array_filter($m->getPlanetMap(), fn($info) => isset($info["vol"])));
+        $this->assertGreaterThan($leaveFree, count($volcanos));
+        foreach (array_slice($volcanos, $leaveFree) as $i => $hex) {
+            $m->tokens->moveToken("tile_2_" . ($i + 1), $hex, 0);
+        }
+        $m->clean_cache();
+        return array_slice($volcanos, 0, $leaveFree);
+    }
+
+    public function testLavaFlowsPlayableWithFreeVolcano() {
+        $m = $this->game();
+        $card_id = $m->mtFindByName("Lava Flows");
+        $free = $this->occupyVolcanos($m, 1);
+        $this->assertOperationTargetStatus("tile(vol)", $free[0]);
+        $m->playability(PCOLOR, $card_id, $info);
+        $this->assertEquals(MA_OK, $info["m"]);
+    }
+
+    public function testLavaFlowsVoidWhenNoVolcano() {
+        $m = $this->game();
+        $card_id = $m->mtFindByName("Lava Flows");
+        $this->occupyVolcanos($m);
+        $this->assertTrue($m->isVoidSingle("tile(vol)", PCOLOR, 1, $card_id));
+        $this->assertTrue($m->isVoidSingle($m->getRulesFor($card_id), PCOLOR, 1, $card_id));
+        $m->playability(PCOLOR, $card_id, $info);
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $info["m"]);
+    }
+
+    public function testLavaFlowsTempBeforeTile() {
+        $m = $this->game();
+        $tops = $this->playLavaFlowsRules($m, -4); // 2t hits 0 which gives ocean bonus
+        $temp = array_values(array_filter($tops, fn($op) => $op["type"] == "2t"))[0];
+        $m->executeOperationSingle($temp);
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        $this->assertEquals(["w"], array_column($m->machine->getTopOperations(), "type"));
+        $this->assertEquals(["tile(vol)"], array_column($m->machine->getOperationsByRank(2), "type"));
     }
 
     public function testLavaTubeSettlementHellas() {
