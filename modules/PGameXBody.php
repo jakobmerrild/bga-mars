@@ -48,6 +48,7 @@ abstract class PGameXBody extends PGameMachine {
             "var_colonies" => 108,
             "var_prelude_corps" => 109,
             "var_colonies_corps" => 110,
+            "var_venus" => 111,
         ]);
         $this->dbUserPrefs = new DbUserPrefs($this);
         $this->tokens->autoreshuffle = true;
@@ -128,6 +129,9 @@ abstract class PGameXBody extends PGameMachine {
                 }
                 $this->tokens->pickTokensForLocation($coloniesNum, "deck_colo", "display_colonies", -1);
                 $this->activateColonies("");
+            }
+            if ($this->isVenusVariant()) {
+                $this->notifyWithName("message", clienttranslate('Module: ${op_name}'), ["op_name" => "Venus Next"]);
             }
 
             $corps = 2; //(int)( $this->tokens->countTokensInLocation('deck_corp') / $this->getPlayersNumber());
@@ -345,6 +349,10 @@ abstract class PGameXBody extends PGameMachine {
         return $this->getGameStateValue("var_colonies") == 1;
     }
 
+    function isVenusVariant() {
+        return $this->getGameStateValue("var_venus") == 1;
+    }
+
     function isPreludeCorpsExcluded() {
         return $this->getGameStateValue("var_prelude_corps") == 1;
     }
@@ -539,6 +547,9 @@ abstract class PGameXBody extends PGameMachine {
     }
     function debug_optionColonies(int $number) {
         $this->setGameStateValue("var_colonies", $number);
+    }
+    function debug_optionVenus(int $number) {
+        $this->setGameStateValue("var_venus", $number);
     }
     function debug_optionUndo(int $number = 1) {
         $this->setGameStateValue("var_xundo", $number);
@@ -816,6 +827,7 @@ abstract class PGameXBody extends PGameMachine {
         $corp_era = $this->isCorporateEraVariant();
         $prelude = $this->isPreludeVariant();
         $colonies = $this->isColoniesVariant();
+        $venus = $this->isVenusVariant();
         foreach ($this->token_types as $id => $info) {
             if (startsWith($id, "card_")) {
                 $deck = array_get($info, "deck");
@@ -831,6 +843,11 @@ abstract class PGameXBody extends PGameMachine {
                 }
                 if (!$colonies) {
                     if ($deck == "Colonies") {
+                        continue;
+                    }
+                }
+                if (!$venus) {
+                    if ($deck == "Venus") {
                         continue;
                     }
                 }

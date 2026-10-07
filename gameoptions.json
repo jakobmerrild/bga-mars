@@ -172,6 +172,24 @@
     "level": "additional",
     "default": 0
   },
+  "111": {
+    "name": "Expansion: Venus Next",
+    "$varname": "venus",
+    "values": {
+      "0": {
+        "name": "Off",
+        "description": "Not including Venus Next"
+      },
+      "1": {
+        "name": "On",
+        "description": "Venus Next variant includes the Venus track, Venus cards and extra corporations",
+        "tmdisplay": "Venus Next",
+        "nobeginner": true,
+        "alpha": true
+      }
+    },
+    "default": 0
+  },
   "105": {
     "name": "Live Scoring",
     "$varname": "live_scoring",
