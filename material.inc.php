@@ -5843,7 +5843,7 @@ $this->token_types = [
   'location' => 'main_area',
   'scope' => 'global',
   'counter' => 'public',
-  'content' => 'hidden',
+  'content' => 'public',
 ],
  'hand' => [  //
   'type' => 'location',
