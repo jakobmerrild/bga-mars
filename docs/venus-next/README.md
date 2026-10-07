@@ -5,8 +5,9 @@ nothing else: each one repeats the project primer, the rules decisions and the s
 The overall plan and its reasoning are in [../../VENUS_NEXT_PLAN.md](../../VENUS_NEXT_PLAN.md). Card data
 (49 project cards, 5 corporations) is in [../../misc/venus_next_cards.json](../../misc/venus_next_cards.json).
 
-**Before you start any agent:** commit this folder, `VENUS_NEXT_PLAN.md` and `misc/venus_next_cards.json`.
-Agents in fresh worktrees only see committed files.
+**Branch:** all Venus work lives on the `venus-next` branch, not `main`. Every agent branches from the
+latest `venus-next` and merges its finished step back into `venus-next`. `venus-next` goes to `main` only
+when the whole alpha is done (after step 11), and only when the user decides.
 
 ## Briefs
 
@@ -39,8 +40,11 @@ Step 8 is split into three briefs (one per card batch) because 49 cards is too m
 ```
 
 - After step 1, steps 2, 3 and 7 can run in parallel. After step 2, steps 4 and 5 can run in parallel.
-- Almost every step edits `modules/PGameXBody.php` and `misc/venus_material.csv`. Merge each step to
-  `main` before starting a step that depends on it, and rebase parallel branches before merging.
+- Almost every step edits `modules/PGameXBody.php` and `misc/venus_material.csv`. Merge each step into
+  `venus-next` before starting a step that depends on it, and rebase parallel step branches onto
+  `venus-next` before merging.
+- Keep `venus-next` up to date with `main` by merging `main` into `venus-next` (not the other way round)
+  when `main` gets fixes the Venus work needs.
 - Every step ends with `npm run test` green and adds its tests to `modules/tests/VenusTest.php`.
 
 ## Shared names (source of truth)

@@ -3,6 +3,10 @@
 You are implementing one step of the Venus Next (alpha) expansion. This brief is self-contained.
 Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/venus-next/README.md`.
 
+**Branch:** all Venus work lives on `venus-next`, not `main`. Branch from the latest `venus-next`
+(it must already contain the steps this one depends on), and merge your finished step back into
+`venus-next`. Do not merge into or open PRs against `main`.
+
 ## Project primer
 
 - BGA implementation of Terraforming Mars (`terraformingmars`): PHP 8.4 server, TypeScript + SCSS client,
