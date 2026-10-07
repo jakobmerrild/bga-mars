@@ -1240,7 +1240,10 @@ final class GameTest extends TestCase {
 
             try {
                 $pre = array_get($info, "pre", "");
-                $this->game->evaluatePrecondition($pre, PCOLOR, $key);
+                // tracker_tagVenus does not exist until Venus Next step 3 (docs/venus-next/step-03-venus-tag.md)
+                if (!strstr($pre, "tagVenus")) {
+                    $this->game->evaluatePrecondition($pre, PCOLOR, $key);
+                }
 
                 $vp = array_get($info, "vp", "");
                 if ($vp) {

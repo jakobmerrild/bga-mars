@@ -45,6 +45,8 @@ is commented out. A CSS class `.tracker_tagVenus` already exists in `src/css/Pla
    come from Venus cards); if you gate it, the `evaluateTerm` lookup for `tagVenus` must still return 0
    when Venus is off. Pick one and test it.
 2. `npm run build:material`.
+   Then remove the `tagVenus` skip that step 1 added to `testInstanciateAllCard` in
+   `modules/tests/GameTest.php`, so every Venus card precondition is evaluated again.
 3. Check that every place that iterates tag trackers handles Venus correctly:
    - `getCountOfUniqueTags` (~line 3189, used by Aridor's `play_newtag` and some milestones/awards).
    - Generalist / Specialist / Diversifier style counts (`getGeneralistCount` ~line 3246,

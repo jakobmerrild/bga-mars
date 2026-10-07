@@ -13,6 +13,7 @@ class GameUT extends terraformingmars {
     var $xtable;
     var $map_number = 0;
     var $var_colonies = 0;
+    var $var_venus = 0;
     function __construct() {
         include "./material.inc.php";
         include "./states.inc.php";
@@ -27,9 +28,10 @@ class GameUT extends terraformingmars {
         $this->_setCurrentPlayerId(array_key_first($this->loadPlayersBasicInfos()));
     }
 
-    function init(int $map = 0, int $colonies = 0) {
+    function init(int $map = 0, int $colonies = 0, int $venus = 0) {
         $this->map_number = $map;
         $this->var_colonies = $colonies;
+        $this->var_venus = $venus;
         $this->adjustedMaterial(true);
         $this->createTokens();
         $this->gamestate->changeActivePlayer((int)$this->getCurrentPlayerId());
@@ -47,6 +49,10 @@ class GameUT extends terraformingmars {
 
     function isColoniesVariant() {
         return $this->var_colonies;
+    }
+
+    function isVenusVariant() {
+        return $this->var_venus;
     }
 
     function setListeners(array $l) {
