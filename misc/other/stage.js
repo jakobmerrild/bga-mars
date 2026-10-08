@@ -15,7 +15,7 @@ const root = path.resolve(__dirname, "../..");
 const out = path.join(root, "dist", name);
 
 // keep in sync with the ignore list in .vscode/sftp.json
-const ignore = new Set([".git", ".settings", ".project", "node_modules", "modules/tests", "tests", ".vscode", "dist"]);
+const ignore = new Set([".git", ".claude", ".settings", ".project", "node_modules", "modules/tests", "tests", ".vscode", "dist"]);
 const textExt = new Set([".php", ".js", ".ts", ".css", ".scss", ".tpl", ".json", ".sql", ".csv", ".md", ".txt", ".html"]);
 
 function copyDir(rel) {
