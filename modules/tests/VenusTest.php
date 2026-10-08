@@ -70,11 +70,123 @@ final class VenusTest extends TestCase {
         }
     }
 
-    // Step 3: Venus tag
+    // Step 2: Venus scale, v operation, track bonuses, Air Scrapping
 
-    private function venusGame(): GameUT {
-        return (new GameUT())->init(0, 0, 1);
+    private function venusGame(int $venus = 1): GameUT {
+        return (new GameUT())->init(0, 0, $venus);
     }
+
+    private function raiseVenus(GameUT $m, string $op = "v", string $color = PCOLOR) {
+        $m->push($color, $op);
+        $m->st_gameDispatch();
+    }
+
+    public function testRaiseVenusIncreasesTrackAndTR() {
+        $m = $this->venusGame();
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->raiseVenus($m);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testRaiseVenus2Steps() {
+        $m = $this->venusGame();
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->raiseVenus($m, "2v");
+        $this->assertEquals(4, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 2, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testVenusBonusAt8DrawsCard() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 6);
+        $this->raiseVenus($m);
+        $this->assertEquals(8, $m->tokens->getTokenState("tracker_v"));
+        // the bonus queues a draw, which waits for the player to confirm since it cannot be undone
+        $tops = $m->machine->getTopOperations(PCOLOR);
+        $op = reset($tops);
+        $this->assertEquals("draw", $op["type"]);
+        $this->assertEquals(PCOLOR, $op["owner"]);
+        $this->assertEquals(1, $op["count"]);
+    }
+
+    public function testVenusBonusAt16GivesTR() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 14);
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->raiseVenus($m);
+        $this->assertEquals(16, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 2, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testVenusCapsAt30() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 28);
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->raiseVenus($m, "2v");
+        $this->assertEquals(30, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
+        $op = $m->getOperationInstanceFromType("v", PCOLOR);
+        $this->assertTrue($op->requireConfirmation());
+    }
+
+    public function testRaiseVenusFiresTriggerPerStep() {
+        $m = $this->venusGame();
+        $m->setListeners([
+            "card_x" => ["e" => "raise_v:m:this:any", "owner" => BCOLOR, "key" => "card_x"],
+        ]);
+        $this->raiseVenus($m, "2v");
+        $triggered = array_filter($m->machine->getTopOperations(), fn($op) => $op["owner"] == BCOLOR && $op["type"] == "m" && $op["data"] == "card_x:e:card_x");
+        $this->assertCount(2, $triggered);
+    }
+
+    public function testVenusDoesNotAffectEndOfGame() {
+        $m = $this->venusGame();
+        foreach (["t", "o", "w"] as $p) {
+            $m->tokens->setTokenState("tracker_$p", $m->getRulesFor("tracker_$p", "max"));
+        }
+        $this->assertTrue($m->isEndOfGameAchived());
+        $this->assertEquals(0, $m->getVenusProgression());
+
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 30);
+        $this->assertFalse($m->isEndOfGameAchived());
+        $this->assertEquals(100, $m->getVenusProgression());
+    }
+
+    public function testVenusRequirementTermUsesStepsOf2() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 6);
+        $this->assertEquals(0, $m->evaluateExpression("v>=10", PCOLOR));
+        $this->assertEquals(1, $m->evaluateExpression("v>=10", PCOLOR, null, ["mods" => 2]));
+        $this->assertEquals(0, $m->evaluateExpression("v>=10", PCOLOR, null, ["mods" => 1]));
+    }
+
+    public function testAirScrappingOnlyWithVenus() {
+        $m = $this->venusGame(0);
+        $this->assertNull($m->tokens->getTokenInfo("card_stanproj_9"));
+
+        $m = $this->venusGame();
+        $this->assertNotNull($m->tokens->getTokenInfo("card_stanproj_9"));
+        $m->setTrackerValue(PCOLOR, "m", 15);
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $m->push(PCOLOR, "stan");
+        $tops = $m->machine->getTopOperations(PCOLOR);
+        $op = reset($tops);
+        $m->fakeUserAction($op, "card_stanproj_9");
+        $m->st_gameDispatch();
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "m"));
+        $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testNoVenusTrackerWithoutVenus() {
+        $m = $this->venusGame(0);
+        $this->assertNull($m->tokens->getTokenInfo("tracker_v"));
+        $this->assertEquals(0, $m->getVenusProgression());
+    }
+
+    // Step 3: Venus tag
 
     public function testPlayVenusCardCountsTag() {
         $m = $this->venusGame();

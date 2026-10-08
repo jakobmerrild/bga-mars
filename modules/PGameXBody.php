@@ -328,6 +328,16 @@ abstract class PGameXBody extends PGameMachine {
         return (100 * ($oxigen / $max_oxigen + $oceans / $max_oceans + ($temp + 30) / ($max_temp + 30))) / 3;
     }
 
+    /** Venus is not part of the Mars end of game condition, so it is kept out of getTerraformingProgression() */
+    function getVenusProgression() {
+        if (!$this->isVenusVariant()) {
+            return 0;
+        }
+        $venus = $this->tokens->getTokenState("tracker_v");
+        $max_venus = $this->getRulesFor("tracker_v", "max");
+        return (100 * $venus) / $max_venus;
+    }
+
     function isCorporateEraVariant() {
         return $this->getGameStateValue("var_corporate_era") == 1;
     }
@@ -868,6 +878,11 @@ abstract class PGameXBody extends PGameMachine {
                     continue;
                 }
             }
+            if ($id == "tracker_v") {
+                if (!$venus) {
+                    continue;
+                }
+            }
             $this->createTokenFromInfo($id, $info);
         }
     }
@@ -1213,7 +1228,7 @@ abstract class PGameXBody extends PGameMachine {
                 return $value;
             }
             $mods = array_get($options, "mods", 0);
-            if ($x == "t") {
+            if ($x == "t" || $x == "v") {
                 $mods = $mods * 2;
             }
             return $value + $mods;
@@ -2359,6 +2374,12 @@ abstract class PGameXBody extends PGameMachine {
                 //$this->debugLog("-param bonus $bonus");
                 $this->notifyMessageWithTokenName(clienttranslate('Parameter ${token_name} increase triggers a bonus'), $token_id);
                 $this->putInEffectPool($color, $bonus);
+            }
+        }
+        if ($type == "v") {
+            // Aphrodite gains per step, so trigger once per step actually raised
+            for ($i = 0; $i < $steps; $i++) {
+                $this->triggerEffect($color, "raise_v", $token_id);
             }
         }
 
