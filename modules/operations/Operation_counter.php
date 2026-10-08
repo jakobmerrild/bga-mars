@@ -16,7 +16,7 @@ class Operation_counter extends AbsOperation {
         $max = $this->getParam(2, '');
         if ($min === 'null') $min = '';
 
-        $count = $this->game->evaluateExpression(trim($expr), $owner, $this->getContext(), ['wilds' => []]);
+        $count = $this->evaluateTags(trim($expr), $owner);
         if (!is_numeric($count))  throw new Exception("Did not evaluate to a number $expr $count");
 
         if ($max) {
@@ -24,11 +24,22 @@ class Operation_counter extends AbsOperation {
             if ($count > $maxcount) $count = $maxcount;
         }
 
-        $mincount = $min  ? $this->game->evaluateExpression(trim($min), $owner, $this->getContext(), ['wilds' => []]) : $count;
+        $mincount = $min  ? $this->evaluateTags(trim($min), $owner) : $count;
         if (!is_numeric($mincount))  throw new Exception("Did not evaluate to a number $min $mincount");
 
 
         return [$count, $mincount];
+    }
+
+    function evaluateTags(string $expr, string $owner) {
+        preg_match_all('/tag[A-Z]\w*/', $expr, $matches);
+        $tags = array_unique($matches[0]);
+        if (count($tags) > 1 && !in_array('tagWild', $tags)) {
+            // sum of several tag types (Gyropolis: Venus and Earth tags), each wild tag counts as only one of them,
+            // so add wilds once instead of to each term
+            return $this->game->evaluateExpression("($expr)+tagWild", $owner, $this->getContext(), ['wilds' => null]);
+        }
+        return $this->game->evaluateExpression($expr, $owner, $this->getContext(), ['wilds' => []]);
     }
 
     function effect(string $owner, int $inc): int {

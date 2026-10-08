@@ -1014,6 +1014,42 @@ final class VenusTest extends TestCase {
         $this->assertEquals(1, $m->getTrackerValue($color, "city"));
     }
 
+    public function testGyropolisCountsWildOnce() {
+        // a wild tag counts as either a Venus or an Earth tag, not both
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $m->setTrackerValue($color, "m", 20);
+        $m->setTrackerValue($color, "pe", 2);
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 1);
+        $m->tokens->setTokenState("tracker_tagEarth_{$color}", 1);
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 1);
+        $pm = $m->getTrackerValue($color, "pm");
+        $this->playVenusCard($m, "Gyropolis");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertEquals("city", $op["type"]);
+        $m->fakeUserAction($op, "hex_4_3");
+        $m->st_gameDispatch();
+        $this->assertEquals($pm + 3, $m->getTrackerValue($color, "pm"));
+    }
+
+    public function testGyropolisCountsEachWild() {
+        // each wild tag counts once, as either a Venus or an Earth tag
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $m->setTrackerValue($color, "m", 20);
+        $m->setTrackerValue($color, "pe", 2);
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 2);
+        $pm = $m->getTrackerValue($color, "pm");
+        $this->playVenusCard($m, "Gyropolis");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertEquals("city", $op["type"]);
+        $m->fakeUserAction($op, "hex_4_3");
+        $m->st_gameDispatch();
+        $this->assertEquals($pm + 2, $m->getTrackerValue($color, "pm"));
+    }
+
     public function testTerraformingContractNeeds25TR() {
         $m = $this->venusGame();
         $card = $m->mtFind("name", "Terraforming Contract");
