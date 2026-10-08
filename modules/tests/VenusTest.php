@@ -609,6 +609,33 @@ final class VenusTest extends TestCase {
         $this->assertContains("lastforest", $types);
     }
 
+    public function testWgtCompletingTerraformingEndsGameAfterNextGeneration() {
+        // the Game End Check comes before WGT, so one more generation is played
+        $m = $this->venusGame();
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_t", $m->getRulesFor("tracker_t", "max") - 2);
+        $this->assertFalse($m->isEndOfGameAchived());
+
+        $m->effect_endOfTurn();
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $m->fakeUserAction($ops[0], "tracker_t");
+        $this->assertTrue($m->isEndOfGameAchived());
+        $tops = $m->machine->getTopOperations();
+        $m->executeOperationSingle(reset($tops));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["research"], $types);
+        $this->assertNotEquals(MA_STAGE_LASTFOREST, $m->getGameStateValue("gamestage"));
+
+        // next generation is played out, its end of turn ends the game
+        $m->machine->clear();
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+        $this->assertEquals(MA_STAGE_LASTFOREST, $m->getGameStateValue("gamestage"));
+    }
+
     private function coloniesGame(int $venus): GameUT {
         $m = (new GameUT())->init(0, 1, $venus);
         $m->dbSetTokenLocation("card_colo_2", "display_colonies", 1);
