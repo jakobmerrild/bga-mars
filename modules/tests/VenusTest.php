@@ -185,4 +185,107 @@ final class VenusTest extends TestCase {
         $this->assertNull($m->tokens->getTokenInfo("tracker_v"));
         $this->assertEquals(0, $m->getVenusProgression());
     }
+
+    // Step 3: Venus tag
+
+    public function testPlayVenusCardCountsTag() {
+        $m = $this->venusGame();
+        $m->effect_playCard(PCOLOR, "card_main_233"); // Ishtar Mining
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "tagVenus"));
+        $this->assertEquals(0, $m->getTrackerValue(BCOLOR, "tagVenus"));
+    }
+
+    public function testVenusGovernorCountsTwoTags() {
+        $m = $this->venusGame();
+        $m->effect_playCard(PCOLOR, "card_main_233"); // Ishtar Mining
+        $m->effect_playCard(PCOLOR, "card_main_255"); // Venus Governor, tags Venus Venus
+        $this->assertEquals(3, $m->getTrackerValue(PCOLOR, "tagVenus"));
+    }
+
+    public function testVenusTagRequirement() {
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $card = "card_main_244"; // Sister Planet Support: Venus and Earth tags
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition($color, $card));
+
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 1);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition($color, $card));
+        $m->tokens->setTokenState("tracker_tagEarth_{$color}", 1);
+        $this->assertEquals(MA_OK, $m->precondition($color, $card));
+
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 0);
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 1);
+        $this->assertEquals(MA_OK, $m->precondition($color, $card));
+    }
+
+    public function testSingleWildDoesNotSatisfyTwoTagRequirement() {
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 1);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition($color, "card_main_244")); // Sister Planet Support
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 2);
+        $this->assertEquals(MA_OK, $m->precondition($color, "card_main_244"));
+    }
+
+    public function testVenusGovernorRequirementCountsWild() {
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $card = "card_main_255"; // Venus Governor: 2 Venus tags
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 1);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition($color, $card));
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 1);
+        $this->assertEquals(MA_OK, $m->precondition($color, $card));
+    }
+
+    public function testVenusTagTriggersPlayTagVenus() {
+        $m = $this->venusGame();
+        // no card reacts to Venus tags yet, so give a tableau card that effect
+        $m->token_types["card_main_1"]["e"] = "play_tagVenus:m";
+        $m->tokens->moveToken("card_main_1", "tableau_" . PCOLOR, MA_CARD_STATE_ACTION_UNUSED);
+        $m->clearEventListenerCache();
+        $this->assertCount(1, $m->collectListeners(PCOLOR, "play_tagVenus"));
+        $before = $m->getTrackerValue(PCOLOR, "m");
+        $m->effect_playCard(PCOLOR, "card_main_233"); // Ishtar Mining
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        $this->assertEquals($before + 1, $m->getTrackerValue(PCOLOR, "m"));
+    }
+
+    public function testUniqueTagsIncludesVenus() {
+        $m = $this->venusGame();
+        $before = $m->evaluateExpression("uniquetags", PCOLOR);
+        $m->effect_playCard(PCOLOR, "card_main_233"); // Ishtar Mining
+        $this->assertEquals($before + 1, $m->evaluateExpression("uniquetags", PCOLOR));
+        $m->effect_playCard(PCOLOR, "card_main_255"); // Venus Governor, same tag again
+        $this->assertEquals($before + 1, $m->evaluateExpression("uniquetags", PCOLOR));
+    }
+
+    public function testUniqueTagsCapDependsOnVenus() {
+        // 10 base tags (+ Venus when on); wilds can fill the gaps but not exceed the number of real tags
+        foreach ([0 => 10, 1 => 11] as $venus => $max) {
+            $m = (new GameUT())->init(0, 0, $venus);
+            $color = PCOLOR;
+            $m->tokens->setTokenState("tracker_tagWild_{$color}", 20);
+            $this->assertEquals($max, $m->evaluateExpression("uniquetags", $color), "venus=$venus");
+        }
+    }
+
+    public function testVenusTagZeroWithoutVenus() {
+        $m = (new GameUT())->init(0, 0, 0);
+        $this->assertEquals(0, $m->evaluateExpression("tagVenus", PCOLOR));
+    }
+
+    public function testAllPreconditionsParseCompletely() {
+        // MathExpression is binary only and ignores trailing tokens: "a + b >= 2" silently drops ">= 2"
+        $m = $this->venusGame();
+        foreach ($m->token_types as $key => $info) {
+            $pre = array_get($info, "pre");
+            if (!$pre) {
+                continue;
+            }
+            $parser = new MathExpressionParser($pre);
+            $parser->parseExpression();
+            $this->assertTrue($parser->isEos(), "$key: $pre");
+        }
+    }
 }
