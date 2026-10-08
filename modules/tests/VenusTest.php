@@ -13,8 +13,9 @@ use PHPUnit\Framework\TestCase;
  *    The general delta (tracker_pdelta, onPre_delta) applies to t/o/w and v. Morning Star Inc.
  *    adds a Venus-only delta (tracker_pdeltav) on top, stacking with the general one.
  * Q2 World Government Terraforming raising Venus triggers Aphrodite (raise_v fires).
- * Q3 WGT gives no TR and no bonuses of any kind: no track bonuses (O2 8% temp, temp ocean,
- *    Venus 8%/16%) and no ocean/tile placement bonuses.
+ * Q3 WGT gives no TR and no player bonuses: no heat production, no Venus 8%/16% draw/TR and no
+ *    ocean/tile placement bonuses. Track bonuses that raise another global parameter still happen
+ *    (O2 8% raises temperature, temperature 0 places an ocean), also without TR.
  * Q4 Solo (official rules, standard flavour): winning requires all four parameters maxed,
  *    Venus included. Still 14 TR and 14 generations. WGT runs every generation, the solo player
  *    (always first player) chooses, and it is skipped in the last generation because the Game End
@@ -458,13 +459,58 @@ final class VenusTest extends TestCase {
         $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
     }
 
-    public function testWgtOxygenNoTemperatureBonus() {
+    // the bonus ocean waits for the player to choose where it goes, then is placed on the chosen hex
+    private function placeBonusOcean(GameUT $m, string $color = PCOLOR) {
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertNotFalse($op, "expected an ocean placement");
+        $this->assertMatchesRegularExpression('/^w(\(|$)/', $op["type"], "expected an ocean placement");
+        $this->assertEquals($color, $op["owner"]);
+        $this->assertEquals($w, $m->tokens->getTokenState("tracker_w"), "ocean placed without the player's choice");
+
+        $free = array_keys(array_filter($m->getPlanetMap(), fn($info, $hex) => isset($info["ocean"]) && !$m->tokens->getTokenOnLocation($hex), ARRAY_FILTER_USE_BOTH));
+        $hex = end($free); // not the first free hex, so an automatic pick would not pass
+        $m->fakeUserAction($op, $hex);
+        $m->st_gameDispatch();
+        $this->assertStringStartsWith("tile_3_", $m->tokens->getTokenOnLocation($hex)["key"] ?? "");
+    }
+
+    public function testWgtOxygenRaisesTemperatureBonus() {
         $m = $this->venusGame();
         $m->tokens->setTokenState("tracker_o", 7);
         $t = $m->tokens->getTokenState("tracker_t");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
         $this->resolveWgt($m, "tracker_o");
         $this->assertEquals(8, $m->tokens->getTokenState("tracker_o"));
-        $this->assertEquals($t, $m->tokens->getTokenState("tracker_t"));
+        $this->assertEquals($t + 2, $m->tokens->getTokenState("tracker_t"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtTemperaturePlacesOceanBonus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_t", -2);
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_t");
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_t"));
+        $this->placeBonusOcean($m);
+        $this->assertEquals($w + 1, $m->tokens->getTokenState("tracker_w"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtOxygenRaisesTemperatureWhichPlacesOcean() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_o", 7);
+        $m->tokens->setTokenState("tracker_t", -2);
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_o");
+        $this->assertEquals(8, $m->tokens->getTokenState("tracker_o"));
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_t"));
+        $this->placeBonusOcean($m);
+        $this->assertEquals($w + 1, $m->tokens->getTokenState("tracker_w"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
     }
 
     public function testWgtOceanNoPlacementBonus() {
@@ -563,6 +609,33 @@ final class VenusTest extends TestCase {
         $this->assertContains("lastforest", $types);
     }
 
+    public function testWgtCompletingTerraformingEndsGameAfterNextGeneration() {
+        // the Game End Check comes before WGT, so one more generation is played
+        $m = $this->venusGame();
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_t", $m->getRulesFor("tracker_t", "max") - 2);
+        $this->assertFalse($m->isEndOfGameAchived());
+
+        $m->effect_endOfTurn();
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $m->fakeUserAction($ops[0], "tracker_t");
+        $this->assertTrue($m->isEndOfGameAchived());
+        $tops = $m->machine->getTopOperations();
+        $m->executeOperationSingle(reset($tops));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["research"], $types);
+        $this->assertNotEquals(MA_STAGE_LASTFOREST, $m->getGameStateValue("gamestage"));
+
+        // next generation is played out, its end of turn ends the game
+        $m->machine->clear();
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+        $this->assertEquals(MA_STAGE_LASTFOREST, $m->getGameStateValue("gamestage"));
+    }
+
     private function coloniesGame(int $venus): GameUT {
         $m = (new GameUT())->init(0, 1, $venus);
         $m->dbSetTokenLocation("card_colo_2", "display_colonies", 1);
@@ -593,12 +666,35 @@ final class VenusTest extends TestCase {
         $this->assertCount(1, $ops);
         $m->fakeUserAction($ops[0], "tracker_t");
         $types = array_column($m->machine->getTopOperations(), "type");
-        $this->assertEquals(["coloprod"], $types);
+        $this->assertEquals(["endgen"], $types);
         $tops = $m->machine->getTopOperations();
         $m->executeOperationSingle(reset($tops));
         $this->assertColonyProductionDone($before, $this->colonyLevels($m));
         $types = array_column($m->machine->getTopOperations(), "type");
         $this->assertEquals(["research"], $types);
+    }
+
+    public function testFirstPlayerMovesAfterWgt() {
+        $m = $this->venusGame();
+        $starting = $m->getCurrentStartingPlayer();
+        $m->effect_endOfTurn();
+        $this->assertEquals($starting, $m->getCurrentStartingPlayer());
+        $this->assertEquals($starting, $m->getActivePlayerId());
+
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $m->fakeUserAction($ops[0], "tracker_t");
+        $this->assertEquals($starting, $m->getCurrentStartingPlayer());
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["endgen"], $types);
+
+        $tops = $m->machine->getTopOperations();
+        $m->executeOperationSingle(reset($tops));
+        $next = $m->getPlayerAfter($starting);
+        $this->assertEquals($next, $m->getCurrentStartingPlayer());
+        $ops = array_values($m->machine->getTopOperations());
+        $this->assertEquals("research", $ops[0]["type"]);
+        $this->assertEquals($m->custom_getPlayerColorById($next), $ops[0]["owner"]);
     }
 
     public function testColoniesOnlyProductionUnchanged() {
@@ -622,6 +718,24 @@ final class VenusTest extends TestCase {
     public function testSoloWgtSkippedInLastGeneration() {
         $m = $this->soloGame();
         $m->tokens->setTokenState("tracker_gen", 14);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+    }
+
+    public function testSoloPreludeWgtSkippedInGeneration12() {
+        // Prelude solo ends after 12 generations, Venus does not change that
+        $m = $this->soloGame();
+        $m->setGameStateValue("var_prelude", 1);
+        $this->assertEquals(12, $m->getLastGeneration());
+        $m->tokens->setTokenState("tracker_gen", 11);
+        $m->effect_endOfTurn();
+        $this->assertCount(1, $this->wgtOps($m));
+
+        $m = $this->soloGame();
+        $m->setGameStateValue("var_prelude", 1);
+        $m->tokens->setTokenState("tracker_gen", 12);
         $m->effect_endOfTurn();
         $this->assertCount(0, $this->wgtOps($m));
         $types = array_column($m->machine->getTopOperations(), "type");

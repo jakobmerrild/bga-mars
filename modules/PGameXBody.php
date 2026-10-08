@@ -2433,12 +2433,16 @@ abstract class PGameXBody extends PGameMachine {
                 "_notifType" => "message_warning",
             ]);
         }
-        // check bonus, World Government Terraforming gives no bonuses
-        for ($i = $perstep; !$wgt && $i <= $inc; $i += $perstep) {
+        // check bonus, World Government Terraforming only gives the bonuses that raise another global
+        // parameter (temperature, ocean), and those also give no TR and no placement bonuses
+        for ($i = $perstep; $i <= $inc; $i += $perstep) {
             $v = $current + $i;
             $nvalue = $v >= 0 ? $v : "n" . -$v;
             $bounus_name = "param_{$type}_{$nvalue}";
             $bonus = $this->getRulesFor($bounus_name, "r");
+            if ($bonus && $wgt) {
+                $bonus = in_array($bonus, ["t", "w"]) ? "$bonus(wgt)" : "";
+            }
             if ($bonus) {
                 //$this->debugLog("-param bonus $bonus");
                 $this->notifyMessageWithTokenName(clienttranslate('Parameter ${token_name} increase triggers a bonus'), $token_id);
@@ -2668,25 +2672,27 @@ abstract class PGameXBody extends PGameMachine {
             }
             return null;
         }
-        $current_player_id = $this->getCurrentStartingPlayer();
         // step 2: world goverment: venus only, first player of the generation that just ended chooses
-        // step 3: colony production
         if ($this->isVenusVariant()) {
-            $color = $this->custom_getPlayerColorById($current_player_id);
+            $color = $this->custom_getPlayerColorById($this->getCurrentStartingPlayer());
             if (!$this->isVoidSingle("wgt", $color)) {
                 // void when all four parameters are maxed (possible in solo)
                 $this->machine->queue("wgt", 1, 1, $color);
+                $this->machine->queue("endgen", 1, 1, $color); // has to wait for wgt choice
+                return null;
             }
-            if ($this->isColoniesVariant()) {
-                $this->machine->queue("coloprod", 1, 1, $color); // has to wait for wgt choice
-            }
-        } else {
-            $this->effect_colonyProduction();
         }
-        $player_id = $this->getPlayerAfter($current_player_id);
+        $this->effect_endOfGeneration();
+        return null;
+    }
+
+    function effect_endOfGeneration() {
+        // step 3: colony production
+        $this->effect_colonyProduction();
+        // first player marker moves only after the solar phase
+        $player_id = $this->getPlayerAfter($this->getCurrentStartingPlayer());
         $this->setCurrentStartingPlayer($player_id);
         $this->machine->queue("research", 1, 1, $this->custom_getPlayerColorById($player_id));
-        return null;
     }
 
     function effect_finalScoring(): int {

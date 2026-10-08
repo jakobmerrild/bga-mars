@@ -7323,9 +7323,9 @@ $this->token_types = [
   'type' => 'finalscoring',
   'name' => clienttranslate('Final Scoring'),
 ],
- 'op_coloprod' => [  //
-  'type' => 'coloprod',
-  'name' => clienttranslate('Colony Production'),
+ 'op_endgen' => [  //
+  'type' => 'endgen',
+  'name' => clienttranslate('End of Generation'),
 ],
  'op_cardx' => [  //
   'type' => 'cardx',
