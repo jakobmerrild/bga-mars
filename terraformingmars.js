@@ -5395,6 +5395,9 @@ var GameXBody = /** @class */ (function (_super) {
         else if (key.startsWith("tracker_forest") || key.startsWith("tracker_land")) {
             txt += this.generateTooltipSection(_("Tiles on Mars"), _("Number of corresponding tiles played on Mars."));
         }
+        else if (key.startsWith("tracker_pdeltav")) {
+            txt += this.generateTooltipSection(_("Venus requirements delta"), _("Your Venus requirements are +X or -X steps, your choice in each case."));
+        }
         else if (key.startsWith("tracker_pdelta")) {
             txt += this.generateTooltipSection(_("Global parameters delta"), _("Your temperature, oxygen, and ocean requirements are +X or -X steps, your choice in each case."));
         }

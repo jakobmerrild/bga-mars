@@ -1051,10 +1051,20 @@ abstract class PGameXBody extends PGameMachine {
                     $outcome = $lisinfo["outcome"];
                     $delta += $outcome;
                 }
-                if ($delta) {
+                // Morning Star Inc. modifies only Venus requirements, on top of the general delta
+                $vdelta = $this->tokens->getTokenState("tracker_pdeltav_{$owner}") ?? 0;
+                if ($delta || $vdelta) {
                     $valid =
-                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => $delta, "wilds" => $wilds]) ||
-                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => -$delta, "wilds" => $wilds]);
+                        $this->evaluateExpression($cond, $owner, $tokenid, [
+                            "mods" => $delta,
+                            "vmods" => $vdelta,
+                            "wilds" => $wilds,
+                        ]) ||
+                        $this->evaluateExpression($cond, $owner, $tokenid, [
+                            "mods" => -$delta,
+                            "vmods" => -$vdelta,
+                            "wilds" => $wilds,
+                        ]);
                 }
                 if (!$valid) {
                     return false;
@@ -1239,6 +1249,9 @@ abstract class PGameXBody extends PGameMachine {
                 return $value;
             }
             $mods = array_get($options, "mods", 0);
+            if ($x == "v") {
+                $mods += array_get($options, "vmods", 0);
+            }
             if ($x == "t" || $x == "v") {
                 $mods = $mods * 2;
             }
