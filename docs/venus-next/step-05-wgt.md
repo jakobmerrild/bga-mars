@@ -41,10 +41,11 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
   final scoring and skip the rest; (2) **World Government Terraforming** (Venus Next only); (3) colony
   production (Colonies only); then the next generation starts.
 - WGT: the **first player of the generation that just ended** chooses one global parameter that is not
-  maxed (temperature, oxygen, ocean or Venus) and raises it one step. This gives **no TR and no bonuses of
-  any kind**: no track bonuses (oxygen 8% -> temperature, temperature -> heat production / ocean, Venus
-  8% / 16%) and no tile placement bonuses (hex resources, 2 M€ per adjacent ocean). The first player
-  chooses where the ocean goes.
+  maxed (temperature, oxygen, ocean or Venus) and raises it one step. This gives **no TR and no player
+  bonuses**: no heat production, no Venus 8% / 16% draw / TR and no tile placement bonuses (hex
+  resources, 2 M€ per adjacent ocean). Track bonuses that raise another global parameter **do** happen,
+  also without TR: oxygen 8% -> temperature, temperature 0 -> ocean. The first player chooses where an
+  ocean goes.
 - WGT raising Venus **does** trigger Aphrodite (the `raise_v` event still fires).
 - Solo with Venus Next (standard flavour, `var_solo_flavour == 0`): the player wins only if **all four**
   parameters are maxed, Venus included. 14 TR, 14 generations (12 with Prelude) as before. WGT runs every

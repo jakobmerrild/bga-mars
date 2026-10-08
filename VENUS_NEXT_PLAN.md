@@ -22,7 +22,7 @@ Decide these before Step 4/5; record answers at the top of `VenusTest.php` as co
 |---|----------|--------|
 | Q1 | Do Adaptation Technology / Special Design / Inventrix modify **Venus** requirements? | **Decided: yes, all three.** The general delta (`pdelta`, `onPre_delta`) applies to t/o/w **and** v. Morning Star Inc. adds a Venus-only delta on top. |
 | Q2 | Does WGT raising Venus trigger Aphrodite? | **Decided: yes.** |
-| Q3 | Does WGT get track bonuses (O2 8% -> temp, temp -> ocean, Venus 8%/16%) or ocean placement bonuses? | **Decided: no.** No TR, no bonuses of any kind. |
+| Q3 | Does WGT get track bonuses (O2 8% -> temp, temp -> ocean, Venus 8%/16%) or ocean placement bonuses? | **Decided:** no TR and no player bonuses (heat production, Venus 8%/16%, placement bonuses), but bonuses that raise another parameter (O2 8% -> temp, temp 0 -> ocean) still happen, without TR. |
 | Q4 | Solo: must Venus be maxed to win? Does WGT run in solo? | **Decided (official solo rules): yes and yes.** With Venus Next, the standard solo goal is all four parameters maxed, Venus included. Still 14 TR and 14 generations. The solo player is always first player, so chooses every WGT step. WGT is skipped in the last generation because the Game End Check comes first. See Step 5. |
 | Q5 | Does a Venus off-Mars city count for Mayor, Rover Construction, Pets, Tharsis Republic etc.? | **Decided: not on Mars.** Counts as a city tile in play, but not as a city on Mars (same as Phobos Space Haven today). |
 

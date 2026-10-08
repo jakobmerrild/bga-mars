@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-// World Government Terraforming (Venus Next solar phase): raise one non-maxed global parameter, no TR and no bonuses
+// World Government Terraforming (Venus Next solar phase): raise one non-maxed global parameter, no TR and
+// only the track bonuses that raise another parameter (O2 8% -> temperature, temperature 0 -> ocean)
 class Operation_wgt extends AbsOperation {
     function argPrimaryDetails() {
         // button labels make clear the active player chooses on behalf of the World Government
