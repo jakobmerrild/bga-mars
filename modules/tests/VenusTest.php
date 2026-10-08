@@ -866,8 +866,13 @@ final class VenusTest extends TestCase {
 
     // Step 8A: project cards that only need existing operations
 
+    /** Venus cards only: milestones and awards use r for a counter expression, not an op */
     private function venusCards(GameUT $m): array {
-        return array_filter($m->token_types, fn($info) => array_get($info, "deck") == "Venus");
+        return array_filter(
+            $m->token_types,
+            fn($info, $key) => startsWith($key, "card_") && array_get($info, "deck") == "Venus",
+            ARRAY_FILTER_USE_BOTH
+        );
     }
 
     /** leaf operation types of a rule, e.g. "2npe,city('X')" -> ["npe", "city"] */
