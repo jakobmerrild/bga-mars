@@ -2656,6 +2656,7 @@ var CustomRenders = /** @class */ (function () {
                 arg = arg.replace("ores(Animal)", "resAnimal");
                 arg = arg.replace("ores(Floater)", "resFloater");
                 arg = arg.replace("ores(Floater,Jovian)", "resFloater");
+                arg = arg.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "res$1");
                 opId = arg;
             }
             if (min == 1)
@@ -2702,27 +2703,18 @@ var CustomRenders = /** @class */ (function () {
             }
         }
         else if ((op == "," || op == "+") && arg1.includes("counter(")) {
-            var retSrcs = this.parseExprItem(expr[3], depth + 1);
-            var retGains = this.parseExprItem(expr[4], depth + 1);
-            var isProd = false;
-            for (var _i = 0, retGains_1 = retGains; _i < retGains_1.length; _i++) {
-                var retGain = retGains_1[_i];
-                if (retGain.production == true)
-                    isProd = true;
-                items.push(retGain);
-            }
-            for (var _a = 0, retSrcs_1 = retSrcs; _a < retSrcs_1.length; _a++) {
-                var retSrc = retSrcs_1[_a];
-                retSrc.group = "FOREACH";
-                if (isProd)
-                    retSrc.production = true;
-                items.push(retSrc);
-            }
+            items.push.apply(items, this.parseForEach(expr[3], expr[4], depth + 1));
         }
         else if (op == "," || op == ";" || op == "+") {
             for (var i = 3; i < expr.length; i++) {
-                for (var _b = 0, _c = this.parseExprItem(expr[i], depth + 1); _b < _c.length; _b++) {
-                    var ret = _c[_b];
+                // counter in the middle of a list, e.g. Gyropolis 2npe,counter('tagVenus+tagEarth') pm,city
+                if (typeof expr[i] == "string" && expr[i].startsWith("counter(") && i + 1 < expr.length) {
+                    items.push.apply(items, this.parseForEach(expr[i], expr[i + 1], depth + 1));
+                    i++;
+                    continue;
+                }
+                for (var _i = 0, _a = this.parseExprItem(expr[i], depth + 1); _i < _a.length; _i++) {
+                    var ret = _a[_i];
                     items.push(ret);
                 }
             }
@@ -2731,8 +2723,8 @@ var CustomRenders = /** @class */ (function () {
             for (var i = 3; i < expr.length; i++) {
                 //    items.push(this.parseExprItem(expr[i],true));
                 var lastOr = null;
-                for (var _d = 0, _e = this.parseExprItem(expr[i], depth + 1); _d < _e.length; _d++) {
-                    var ret = _e[_d];
+                for (var _b = 0, _c = this.parseExprItem(expr[i], depth + 1); _b < _c.length; _b++) {
+                    var ret = _c[_b];
                     if (ret != null) {
                         items.push(ret);
                         lastOr = ret;
@@ -2746,16 +2738,40 @@ var CustomRenders = /** @class */ (function () {
         else if (op == ":") {
             var retSrcs = this.parseExprItem(expr[3], depth + 1);
             var retGains = this.parseExprItem(expr[4], depth + 1);
-            for (var _f = 0, retSrcs_2 = retSrcs; _f < retSrcs_2.length; _f++) {
-                var retSrc = retSrcs_2[_f];
+            for (var _d = 0, retSrcs_1 = retSrcs; _d < retSrcs_1.length; _d++) {
+                var retSrc = retSrcs_1[_d];
                 retSrc.group = "ACTION_SPEND";
                 items.push(retSrc);
             }
-            for (var _g = 0, retGains_2 = retGains; _g < retGains_2.length; _g++) {
-                var retGain = retGains_2[_g];
+            for (var _e = 0, retGains_1 = retGains; _e < retGains_1.length; _e++) {
+                var retGain = retGains_1[_e];
                 retGain.group = "ACTION_GAIN";
                 items.push(retGain);
             }
+        }
+        return items;
+    };
+    /** "gain for each source": counter(src) gain */
+    CustomRenders.parseForEach = function (src, gain, depth) {
+        var _this = this;
+        var items = [];
+        // counter('tagVenus+tagEarth') counts several tag types
+        var multi = typeof src == "string" ? src.match(/^counter\('((?:tag\w+\+)+tag\w+)'\)$/) : null;
+        var retSrcs = multi ? multi[1].split("+").map(function (tag) { return _this.getParse(tag, depth); }) : this.parseExprItem(src, depth);
+        var retGains = this.parseExprItem(gain, depth);
+        var isProd = false;
+        for (var _i = 0, retGains_2 = retGains; _i < retGains_2.length; _i++) {
+            var retGain = retGains_2[_i];
+            if (retGain.production == true)
+                isProd = true;
+            items.push(retGain);
+        }
+        for (var _a = 0, retSrcs_2 = retSrcs; _a < retSrcs_2.length; _a++) {
+            var retSrc = retSrcs_2[_a];
+            retSrc.group = "FOREACH";
+            if (isProd)
+                retSrc.production = true;
+            items.push(retSrc);
         }
         return items;
     };
@@ -2769,6 +2785,7 @@ var CustomRenders = /** @class */ (function () {
         item = item.replace("ores(Animal)", "ores_Animal");
         item = item.replace("ores(Floater)", "ores_Floater");
         item = item.replace("ores(Floater,Jovian)", "ores_Floater");
+        item = item.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "ores_$1");
         item = item.replace("counter('(tagPlant>=3)*4')", "special_tagplant_sup3");
         item = item.replace("tagMicrobe/2", "special_tagmicrobe_half");
         item = item.replace("ph,0", "ph");
@@ -2803,6 +2820,7 @@ var CustomRenders = /** @class */ (function () {
     CustomRenders.parseRulesToHtmlBlock = function (items) {
         var rethtm = "";
         var foundor = false;
+        var foreach = false;
         for (var _i = 0, items_2 = items; _i < items_2.length; _i++) {
             var n = items_2[_i];
             if (n.item.divider && n.item.divider == "OR") {
@@ -2815,8 +2833,10 @@ var CustomRenders = /** @class */ (function () {
                 }
             }
             //if (n.qty>1) rethtm+=n.qty+'&nbsp;';
-            if (n.item.group && n.item.group == "FOREACH" && items[0] != n)
+            // one separator before the sources, Gyropolis has two (Venus and Earth tags)
+            if (n.item.group && n.item.group == "FOREACH" && items[0] != n && !foreach)
                 rethtm += "&nbsp;/&nbsp;";
+            foreach = n.item.group == "FOREACH";
             rethtm += this.parseSingleItemToHTML(n.item, n.qty);
         }
         return rethtm;
@@ -2884,9 +2904,9 @@ var CustomRenders = /** @class */ (function () {
                 var content = item.content != undefined ? item.content : "";
                 if (optional_content)
                     content = optional_content;
-                var after = item.after != undefined ? item.after : "";
+                var after_1 = item.after != undefined ? item.after : "";
                 if (item.production === true) {
-                    finds[idx] = '<div class="outer_production"><div class="' + item.classes + '">' + content + "</div>" + after + "</div>";
+                    finds[idx] = '<div class="outer_production"><div class="' + item.classes + '">' + content + "</div>" + after_1 + "</div>";
                 }
                 else if (item.redborder) {
                     finds[idx] =
@@ -2897,11 +2917,11 @@ var CustomRenders = /** @class */ (function () {
                             '">' +
                             content +
                             "</div>" +
-                            after +
+                            after_1 +
                             "</div>";
                 }
                 else {
-                    finds[idx] = '<div class="' + item.classes + '">' + content + "</div>" + after;
+                    finds[idx] = '<div class="' + item.classes + '">' + content + "</div>" + after_1;
                 }
                 idx++;
             }
@@ -2915,9 +2935,39 @@ var CustomRenders = /** @class */ (function () {
         }
         return ret;
     };
+    /**
+     * Requirement "one tag of each of these types", written in material as
+     * ((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3.
+     * Returns the tag types (without tagWild), or undefined if pre is not of that form.
+     */
+    CustomRenders.getDistinctTagsPrereq = function (pre) {
+        if (!Array.isArray(pre) || pre.length != 3 || pre[0] != ">=")
+            return undefined;
+        var tags = [];
+        var collect = function (node) {
+            if (node === "tagWild")
+                return true;
+            if (!Array.isArray(node) || node.length != 3)
+                return false;
+            if (node[0] == "+")
+                return collect(node[1]) && collect(node[2]);
+            if (node[0] == ">" && typeof node[1] == "string" && node[1].startsWith("tag") && node[2] == 0) {
+                tags.push(node[1]);
+                return true;
+            }
+            return false;
+        };
+        if (!collect(pre[1]) || tags.length == 0 || tags.length != Number(pre[2]))
+            return undefined;
+        return tags;
+    };
     CustomRenders.parsePrereqToHTML = function (pre) {
         if (!pre)
             return "";
+        var distinctTags = this.getDistinctTagsPrereq(pre);
+        if (distinctTags) {
+            return '<div class="prereq_content mode_min">' + CustomRenders.parseActionsToHTML(distinctTags.join(" ")) + "</div></div>";
+        }
         var op = "";
         var what = "";
         var qty = 0;
@@ -2949,6 +2999,7 @@ var CustomRenders = /** @class */ (function () {
         var icon = CustomRenders.parseActionsToHTML(what);
         switch (what) {
             case "o":
+            case "v":
                 suffix = "%";
                 break;
             case "t":
@@ -2971,7 +3022,7 @@ var CustomRenders = /** @class */ (function () {
         }
         var qtys;
         qtys = qty.toString();
-        if (qty == 0 && what != "o" && what != "t")
+        if (qty == 0 && what != "o" && what != "t" && what != "v")
             qtys = "";
         var htm = '<div class="prereq_content mode_' + mode + '">' + prefix + qtys + suffix + icon + "</div></div>";
         return htm;
@@ -2979,6 +3030,11 @@ var CustomRenders = /** @class */ (function () {
     CustomRenders.parsePrereqToText = function (pre, game) {
         if (!pre)
             return "";
+        var distinctTags = this.getDistinctTagsPrereq(pre);
+        if (distinctTags) {
+            var names = distinctTags.map(function (tag) { return game.getTokenName(tag); }).join(", ");
+            return _("Requires at least one tag of each type: $tags.").replace("$tags", names);
+        }
         var op = "";
         var what = "";
         var qty = 0;
@@ -3020,6 +3076,9 @@ var CustomRenders = /** @class */ (function () {
                 break;
             case "w":
                 ret = mode == "min" ? _("Requires $v ocean tiles.") : _("$v ocean tiles or less.");
+                break;
+            case "v":
+                ret = mode == "min" ? _("Requires Venus $v%.") : _("Venus must be $v% or lower.");
                 break;
             case "forest":
                 if (qty == 0)
@@ -3435,6 +3494,7 @@ var CustomRenders = /** @class */ (function () {
         all_cardsRed: { classes: "tracker badge token_img tracker_tagEvent", redborder: "tag", after: "*" },
         onPay_tagEarth: { classes: "tracker badge tracker_tagEarth" },
         tagEarth: { classes: "tracker badge tracker_tagEarth" },
+        tagVenus: { classes: "tracker badge tracker_tagVenus" },
         "[1,](sell)": { classes: "" },
         onPay_cardSpace: { classes: "tracker badge tracker_tagSpace" },
         onPay_card: { classes: "empty" },
@@ -3452,6 +3512,7 @@ var CustomRenders = /** @class */ (function () {
         ores_Animal: { classes: "token_img tracker_resAnimal", after: "*", norepeat: true },
         ores_Floater: { classes: "token_img tracker_resFloater", after: "*", norepeat: true },
         special_tagmicrobe_half: { classes: "tracker badge tracker_tagMicrobe", content: "2", norepeat: true },
+        resFloater: { classes: "token_img tracker_resFloater" },
         res: { classes: "token_img tracker_res%res%", norepeat: true },
         nres: { classes: "token_img tracker_res%res%", norepeat: true },
         nmu: { classes: "token_img tracker_m nmu", negative: true, content: "1", exp: "token_img tracker_u" },
@@ -3485,6 +3546,7 @@ var CustomRenders = /** @class */ (function () {
         w: { classes: "token_img tracker_w" },
         o: { classes: "token_img oxygen_icon" },
         q: { classes: "token_img tracker_q" },
+        v: { classes: "token_img venus_icon" },
         ":": { classes: "action_arrow" }
     };
     return CustomRenders;
@@ -4232,6 +4294,7 @@ var GameXBody = /** @class */ (function (_super) {
             var mapnum = this.getMapNumber();
             this.setupHexes(mapnum);
             this.setupMilestonesAndAwards(mapnum);
+            this.setupVenus();
             _super.prototype.setup.call(this, gamedatas);
             this.removeTooltip("map_hexes");
             if (mapnum == 4) {
@@ -4418,11 +4481,25 @@ var GameXBody = /** @class */ (function (_super) {
             var type = list_1[_i];
             var mainnode = $("display_".concat(type, "s"));
             for (var x = 1; this.gamedatas.token_types["".concat(type, "_").concat(x)]; x++) {
-                mainnode.insertAdjacentHTML("beforeend", "<div id=\"".concat(type, "_").concat(x, "\" class=\"").concat(type, " ").concat(type, "_").concat(x, " mileaw_item\"><div id=\"").concat(type, "_label_").concat(x, "\" class=\"").concat(type, "_label\"></div></div>"));
+                // Venus Next 6th milestone/award is a tile placed on top of the Milestones/Awards banner
+                var node = x > 5 ? $("".concat(type, "s_extra")) : mainnode;
+                node.insertAdjacentHTML("beforeend", "<div id=\"".concat(type, "_").concat(x, "\" class=\"").concat(type, " ").concat(type, "_").concat(x, " mileaw_item\"><div id=\"").concat(type, "_label_").concat(x, "\" class=\"").concat(type, "_label\"></div></div>"));
             }
         }
         //<div id="display_awards" class="mileaw_display">
         //<div id="award_1" class="award award_1"><div id="award_label_1" class="award_label">NA</div></div>
+    };
+    GameXBody.prototype.setupVenus = function () {
+        if (!this.isVenusExpansionEnabled())
+            return;
+        var scale = $("venus_scale");
+        var max = Number(this.getRulesFor("tracker_v", "max", 30));
+        for (var v = 0; v <= max; v += 2) {
+            var bonus = this.getRulesFor("param_v_".concat(v), "r", "");
+            var bonusHtml = bonus ? "<div class=\"venus_scale_bonus\">".concat(CustomRenders.parseActionsToHTML(bonus), "</div>") : "";
+            scale.insertAdjacentHTML("beforeend", "<div class=\"venus_scale_item\" data-val=\"".concat(v, "\">").concat(v).concat(bonusHtml, "</div>"));
+        }
+        $("venus_stanproj_title").innerHTML = _("Standard project");
     };
     GameXBody.prototype.setupHexes = function (mapnum) {
         var _this = this;
@@ -5371,6 +5448,10 @@ var GameXBody = /** @class */ (function (_super) {
                 }));
             case "tracker_t":
                 return this.generateTooltipSection(_(displayInfo.name), _("This global parameter (mean temperature at the equator) starts at -30 ˚C."));
+            case "tracker_v":
+                return this.generateTooltipSection(_(displayInfo.name), this.format_string_recursive(_("This global parameter starts with 0% and ends with ${max}%, in steps of 2%. Raising it gives 1 TR. Venus does not have to be completed for the game to end."), {
+                    max: this.getRulesFor("tracker_v", "max")
+                }));
             case "starting_player":
                 return this.generateTooltipSection(_(displayInfo.name), _("Shifts clockwise each generation."));
             case "tracker_tagEvent":
@@ -5844,6 +5925,9 @@ var GameXBody = /** @class */ (function (_super) {
                     return this.customAnimation.animateMapItemAwareness("oxygen_map");
                 }
             }
+            if (key_1 == "tracker_v") {
+                return this.customAnimation.animateMapItemAwareness("venus_map");
+            }
             //ocean's pile
             if (key_1 == "tracker_w") {
                 return this.customAnimation.animateMapItemAwareness("oceans_pile");
@@ -5978,7 +6062,10 @@ var GameXBody = /** @class */ (function (_super) {
             }
         }
         //check TM
-        if (node.id.startsWith("tracker_w") || node.id.startsWith("tracker_t") || node.id.startsWith("tracker_o")) {
+        if (node.id.startsWith("tracker_w") ||
+            node.id.startsWith("tracker_t") ||
+            node.id.startsWith("tracker_o") ||
+            node.id.startsWith("tracker_v")) {
             this.checkTerraformingCompletion();
         }
     };
@@ -6093,6 +6180,10 @@ var GameXBody = /** @class */ (function (_super) {
         }
         else if (tokenInfo.key.startsWith("milestone")) {
             result.nop = true;
+        }
+        else if (tokenInfo.key == "card_stanproj_9" && tokenInfo.location == "display_main") {
+            // Air Scrapping is printed on the Venus board
+            result.location = "venus_stanproj";
         }
         else if (tokenInfo.key == "starting_player") {
             result.location = tokenInfo.location.replace("tableau_", "fpholder_");
@@ -7376,7 +7467,12 @@ var GameXBody = /** @class */ (function (_super) {
         var o_max = this.getRulesFor("tracker_o", "max");
         var t_max = this.getRulesFor("tracker_t", "max");
         var w_max = this.getRulesFor("tracker_w", "max");
-        if (o >= o_max && t >= t_max && w >= w_max) {
+        var complete = o >= o_max && t >= t_max && w >= w_max;
+        // solo with Venus Next: Venus has to be completed too (multiplayer end of game ignores Venus)
+        if (complete && this.isVenusExpansionEnabled() && Object.keys(this.gamedatas.players).length == 1) {
+            complete = parseInt($("tracker_v").dataset.state) >= this.getRulesFor("tracker_v", "max");
+        }
+        if (complete) {
             var htm = '<div id="terraforming_complete" class="terraforming_complete">⚠️' + _("The terraforming is complete") + "</div>";
             if (!$("terraforming_complete"))
                 $("game_play_area").insertAdjacentHTML("afterbegin", htm);

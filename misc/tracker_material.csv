@@ -74,6 +74,7 @@ tagEvent|Event
 tagFighter|Fighter
 resAnimal|Animal
 resMicrobe|Microbe
+resFloater|Floater
 #set nc=
 
 #set type=tracker badge 

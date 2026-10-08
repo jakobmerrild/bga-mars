@@ -1,0 +1,495 @@
+/*
+ * Venus Next expansion. Everything here is shown only when the body has .exp-venus.
+ * There is no Venus art yet, the board, scale, icon and tag are CSS stand-ins.
+ */
+
+$venus-steps: 16; // 0..30% in 2% steps
+
+#venus_board {
+  display: none;
+}
+
+#ebd-body:not(.exp-venus) {
+  .tracker_tagVenus,
+  #tracker_v_param {
+    display: none;
+  }
+}
+
+/* Venus icon (global parameter), used in card rules, requirements and the params panel */
+.token_img.venus_icon {
+  background-image: radial-gradient(circle at 35% 30%, #fff6d5 0%, #f0c46a 45%, #c0782f 100%);
+  background-size: 100% 100%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 calc(var(--resourcesize) * 0.06) #7a4a1c;
+
+  &::before {
+    content: "V";
+    color: #5a3210;
+    font-family: var(--mars-font);
+    font-size: calc(var(--resourcesize) * 0.55);
+    line-height: 1;
+  }
+}
+
+/* Venus tag: no sprite in badges.png, planet on a dark disc */
+.badge.tag_Venus,
+.tracker.badge.tracker_tagVenus {
+  background-image: radial-gradient(circle at 45% 40%, #fff7da 0%, #f2d48a 30%, #d9a54c 42%, #1f3a5f 46%, #10233d 100%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+  border-radius: 50%;
+}
+
+.badge.tag_Venus {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  &::before {
+    content: "V";
+    color: #5a3210;
+    font-family: var(--mars-font);
+    font-size: calc(var(--card-width) * 0.07);
+  }
+}
+
+/* Hoverlord / Venuphile: a tile like the physical one (emblem on top, name banner at the bottom),
+   placed so its name banner covers the Milestones / Awards banner of the board.
+   The anchor point (left/top) is the centre of the board banner. */
+$tile-banner-center: 82%; // vertical centre of the name banner inside the tile
+
+.mileaw_extra {
+  position: absolute;
+  z-index: 5;
+  width: calc(var(--map-width) * 0.12);
+  height: calc(var(--map-width) * 0.08);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -$tile-banner-center);
+  pointer-events: none;
+
+  &:empty {
+    display: none;
+  }
+
+  // #ebd-body: win over the per-map milestone sprites (.map_N .mileaw_item) and layout rules
+  #ebd-body & .mileaw_item {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+    background-image: linear-gradient(180deg, #e9eef2 0%, #9aa4ad 100%);
+    background-size: 100% 100%;
+    border-radius: 18% 18% 10% 10% / 30% 30% 12% 12%;
+    box-shadow:
+      0 0 0 calc(var(--map-width) * 0.003) #59626a,
+      2px 2px 4px rgba(0, 0, 0, 0.6);
+  }
+
+  // stand-in emblem: the Venus planet above the name banner
+  .mileaw_item::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 8%;
+    height: 52%;
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background-image: radial-gradient(circle at 35% 30%, #fff6d5 0%, #f0c46a 45%, #c0782f 100%);
+    box-shadow: 0 0 0 calc(var(--map-width) * 0.002) #7a4a1c;
+  }
+
+  // name banner
+  #ebd-body & .milestone_label,
+  #ebd-body & .award_label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    left: 5%;
+    width: 90%;
+    height: 28%;
+    top: auto;
+    bottom: calc(100% - #{$tile-banner-center} - 14%);
+    border-radius: calc(var(--map-width) * 0.006);
+    font-size: calc(var(--map-width) * 0.017);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  #ebd-body & .milestone_label {
+    background: #2f6db5;
+    color: white;
+    box-shadow: 0 0 0 1px #173b66;
+  }
+
+  #ebd-body & .award_label {
+    background: #f39a2b;
+    color: black;
+    box-shadow: 0 0 0 1px #7a4300;
+  }
+}
+
+// digital layout: the banners are printed on the board image and are bigger
+.mfull #main_board .mileaw_extra {
+  width: calc(var(--map-width) * 0.21);
+  height: calc(var(--map-width) * 0.13);
+  top: 45%;
+
+  .milestone_label,
+  .award_label {
+    font-size: calc(var(--map-width) * 0.03);
+  }
+}
+
+/* The Venus board, next to the Mars board */
+.exp-venus #venus_board {
+  display: block;
+}
+
+#venus_board {
+  position: relative;
+  flex-shrink: 0;
+  width: calc(var(--map-width) * 0.75);
+  aspect-ratio: 1.45;
+  margin: 0 calc(var(--map-width) * 0.02);
+  overflow: hidden;
+  border: calc(var(--map-width) * 0.012) solid #6e2419;
+  border-radius: calc(var(--map-width) * 0.01);
+  box-shadow: rgba(0, 0, 0, 0.5) 2px 2px 3px 1px;
+  background:
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.8) 0 0.4%, transparent 0.6%),
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.7) 0 0.3%, transparent 0.5%),
+    radial-gradient(circle at 60% 35%, rgba(255, 255, 255, 0.6) 0 0.3%, transparent 0.5%),
+    radial-gradient(circle at 92% 45%, rgba(255, 255, 255, 0.7) 0 0.3%, transparent 0.5%),
+    radial-gradient(ellipse at 50% 30%, #1d2233 0%, #07080d 75%);
+  font-family: var(--mars-font);
+  --resourcesize: calc(var(--map-width) * 0.035);
+}
+
+// the cloudy limb of Venus filling the lower part of the board
+.venus_planet {
+  position: absolute;
+  left: -25%;
+  top: 48%;
+  width: 150%;
+  height: 160%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 20%, #ffffff 0%, #e9ecef 35%, #b9c0c7 70%, #8f989f 100%);
+  box-shadow: 0 0 calc(var(--map-width) * 0.04) calc(var(--map-width) * 0.01) rgba(220, 230, 255, 0.55);
+  pointer-events: none;
+}
+
+/* Venus scale along the top */
+.venus_map {
+  position: absolute;
+  left: 4%;
+  top: 6%;
+  width: 92%;
+  height: 9%;
+  border-radius: calc(var(--map-width) * 0.008);
+  background: linear-gradient(90deg, #c8661f 0%, #e7a74f 25%, #efe3c8 50%, #cfe3ef 70%, #6fb1dd 100%);
+  box-shadow: 0 0 0 calc(var(--map-width) * 0.003) #d0d0d0;
+}
+
+.venus_scale {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.venus_scale_item {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: calc(var(--map-width) * 0.022);
+  text-shadow:
+    #000 0 0 2px,
+    #000 0 0 2px;
+  border-left: 1px solid rgba(0, 0, 0, 0.25);
+
+  &:first-child {
+    border-left: none;
+  }
+}
+
+.venus_scale_bonus {
+  position: absolute;
+  top: 115%;
+  left: 50%;
+  transform: translateX(-50%);
+  --resourcesize: calc(var(--map-width) * 0.032);
+
+  .token_img {
+    width: var(--resourcesize);
+    height: calc(var(--resourcesize) * 1.3);
+    box-shadow: 0 0 0 2px #e0e0e0;
+    border-radius: 10%;
+  }
+
+  .tracker_tr {
+    height: var(--resourcesize);
+  }
+}
+
+#venus_map .tracker_v {
+  position: absolute;
+  top: -12%;
+  height: 124%;
+  width: calc(100% / #{$venus-steps});
+  background-image: none;
+  border-radius: 15%;
+  box-shadow:
+    0 0 0 calc(var(--map-width) * 0.004) #ffffff,
+    0 0 calc(var(--map-width) * 0.01) calc(var(--map-width) * 0.003) #ffcb00;
+  transition: 600ms left;
+  left: 0;
+
+  &::after {
+    content: none;
+  }
+
+  @for $i from 0 through $venus-steps - 1 {
+    &[data-state="#{$i * 2}"] {
+      left: calc(100% / #{$venus-steps} * #{$i});
+    }
+  }
+}
+
+/* Off-Mars Venus city areas */
+#venus_board .venus_cities {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  .hex {
+    position: absolute;
+    pointer-events: auto;
+    background-color: rgba(120, 120, 140, 0.45);
+  }
+
+  .hex:hover {
+    background-color: rgba(255, 255, 0, 0.4);
+  }
+
+  .hex.active_slot {
+    background-color: rgba(86, 207, 110, 0.6);
+  }
+
+  // city name like on the board, a placed tile covers it
+  .hex::before {
+    content: attr(data-name);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 8%;
+    text-align: center;
+    color: white;
+    font-size: calc(var(--map-width) * 0.016);
+    text-shadow:
+      #000 0 0 2px,
+      #000 0 0 2px;
+    pointer-events: none;
+  }
+
+  #hex_0_5 {
+    // Luna Metropolis
+    left: 13%;
+    top: 30%;
+  }
+
+  #hex_0_4 {
+    // Dawn City
+    left: 72%;
+    top: 28%;
+  }
+
+  #hex_0_7 {
+    // Stratopolis
+    left: 43%;
+    top: 50%;
+  }
+
+  #hex_0_6 {
+    // Maxwell Base
+    left: 70%;
+    top: 63%;
+  }
+}
+
+/* Air Scrapping standard project, bottom left like on the board */
+.venus_stanproj {
+  position: absolute;
+  left: 3%;
+  bottom: 5%;
+  width: 34%;
+  height: 26%;
+  border-radius: calc(var(--map-width) * 0.01);
+  background: linear-gradient(180deg, #f2f2f2 0%, #b8bec4 100%);
+  box-shadow: 0 0 0 calc(var(--map-width) * 0.003) #777;
+
+  .venus_stanproj_title {
+    position: absolute;
+    top: -12%;
+    left: 15%;
+    width: 70%;
+    text-align: center;
+    border-radius: 1em;
+    background: #f5a623;
+    box-shadow: 0 0 0 1px #6b3e00;
+    color: black;
+    font-size: calc(var(--map-width) * 0.018);
+    line-height: 1.6;
+  }
+
+  .card {
+    position: absolute;
+    left: 5%;
+    top: 30%;
+    width: 90%;
+    height: 55%;
+    border-radius: 1em;
+    background-image: none;
+    background-color: transparent;
+    box-shadow: none;
+    display: block;
+    cursor: pointer;
+
+    // cost
+    &::before {
+      content: attr(data-cost);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: calc(var(--map-width) * 0.05);
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: black;
+      font-size: calc(var(--map-width) * 0.026);
+      background-image: url("img/resources.png");
+      background-size: 1000% 200%;
+      background-position: -300% 0;
+      aspect-ratio: auto;
+    }
+
+    // name
+    &::after {
+      content: attr(data-name);
+      position: absolute;
+      right: 0;
+      top: 15%;
+      width: 68%;
+      height: 70%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 1em;
+      background: #f5a623;
+      box-shadow: 0 0 0 1px #6b3e00;
+      color: black;
+      font-size: calc(var(--map-width) * 0.02);
+    }
+
+    .card_info_box,
+    .card_decor {
+      display: none;
+    }
+  }
+
+  .card.discounted::before {
+    color: #bef983;
+    text-shadow:
+      #000 0 0 2px,
+      #000 0 0 2px;
+  }
+
+  .active_slot.card {
+    box-shadow: 0px 0px 0px 3px #ff9800 !important;
+  }
+}
+
+// keep the Venus board right after the Mars board, whatever the map placement setting
+#ebd-body #venus_board {
+  order: 3;
+}
+
+#ebd-body[data-localsetting_mapplacement="first"] #venus_board {
+  order: 1;
+}
+
+.mfull #ebd-body #venus_board {
+  order: 2;
+}
+
+.mfull #ebd-body[data-localsetting_mapplacement="first"] #venus_board {
+  order: 1;
+}
+
+// Amazonis: the Milestones / Awards banners are at the outer corners of the row
+.mcompact .map_4 .mileaw_header {
+  #milestones_extra,
+  #awards_extra {
+    top: -71%;
+  }
+
+  #milestones_extra {
+    left: 18.6%;
+  }
+
+  #awards_extra {
+    left: 83.8%;
+  }
+}
+
+.mfull .map_4 #main_board .mileaw_header {
+  #milestones_extra,
+  #awards_extra {
+    top: -252%;
+  }
+
+  #milestones_extra {
+    left: 7%;
+  }
+
+  #awards_extra {
+    left: 98.6%;
+  }
+}
+
+/* Morning Star Inc. Venus requirements delta, next to the tags like the global parameters delta */
+.tracker.tracker_pdeltav,
+.tooltipimage.tracker.tracker_pdeltav {
+  background-image: radial-gradient(circle at 35% 30%, #fff6d5 0%, #f0c46a 45%, #c0782f 100%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+  border-radius: 50%;
+}
+
+.playerboard_header .player_tags .tracker.tracker_pdeltav::after {
+  content: "±" attr(data-state);
+}
+
+/* Venus project cards have no art: stand-in illustration, and in the digital layout (which shows
+   card scans) show the generated card face like the cardboard layout does */
+.card.venus_main .card_illustration {
+  background-image:
+    radial-gradient(circle at 70% 120%, #ffffff 0%, #e6e9ec 30%, #b9c0c7 52%, transparent 53%),
+    radial-gradient(ellipse at 30% 30%, #2a3046 0%, #07080d 80%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+
+.mfull .card.venus_main .card_decor {
+  display: block;
+}

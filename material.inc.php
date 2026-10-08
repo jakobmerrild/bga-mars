@@ -7625,6 +7625,13 @@ $this->token_types = [
   'nc' => 1,
   'name' => clienttranslate('Microbe'),
 ],
+ 'resFloater' => [  //
+  'type' => 'tag',
+  'create' => 0,
+  'location' => 'params',
+  'nc' => 1,
+  'name' => clienttranslate('Floater'),
+],
  'tracker_tagScience' => [  //
   'type' => 'tracker badge',
   'create' => 4,

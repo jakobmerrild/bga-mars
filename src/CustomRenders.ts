@@ -27,6 +27,7 @@ class CustomRenders {
     all_cardsRed: { classes: "tracker badge token_img tracker_tagEvent", redborder: "tag", after: "*" },
     onPay_tagEarth: { classes: "tracker badge tracker_tagEarth" },
     tagEarth: { classes: "tracker badge tracker_tagEarth" },
+    tagVenus: { classes: "tracker badge tracker_tagVenus" },
     "[1,](sell)": { classes: "" },
     onPay_cardSpace: { classes: "tracker badge tracker_tagSpace" },
     onPay_card: { classes: "empty" },
@@ -49,6 +50,7 @@ class CustomRenders {
 
     special_tagmicrobe_half: { classes: "tracker badge tracker_tagMicrobe", content: "2", norepeat: true },
 
+    resFloater: { classes: "token_img tracker_resFloater" },
     res: { classes: "token_img tracker_res%res%", norepeat: true },
     nres: { classes: "token_img tracker_res%res%", norepeat: true },
     nmu: { classes: "token_img tracker_m nmu", negative: true, content: "1", exp: "token_img tracker_u" },
@@ -85,6 +87,7 @@ class CustomRenders {
     w: { classes: "token_img tracker_w" },
     o: { classes: "token_img oxygen_icon" },
     q: { classes: "token_img tracker_q" },
+    v: { classes: "token_img venus_icon" },
 
     ":": { classes: "action_arrow" }
   };
@@ -235,6 +238,7 @@ class CustomRenders {
         arg = arg.replace("ores(Animal)", "resAnimal");
         arg = arg.replace("ores(Floater)", "resFloater");
         arg = arg.replace("ores(Floater,Jovian)", "resFloater");
+        arg = arg.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "res$1");
         opId = arg;
       }
 
@@ -281,20 +285,15 @@ class CustomRenders {
         }
       }
     } else if ((op == "," || op == "+") && arg1.includes("counter(")) {
-      let retSrcs = this.parseExprItem(expr[3], depth + 1);
-      let retGains = this.parseExprItem(expr[4], depth + 1);
-      let isProd = false;
-      for (let retGain of retGains) {
-        if (retGain.production == true) isProd = true;
-        items.push(retGain);
-      }
-      for (let retSrc of retSrcs) {
-        retSrc.group = "FOREACH";
-        if (isProd) retSrc.production = true;
-        items.push(retSrc);
-      }
+      items.push(...this.parseForEach(expr[3], expr[4], depth + 1));
     } else if (op == "," || op == ";" || op == "+") {
       for (let i = 3; i < expr.length; i++) {
+        // counter in the middle of a list, e.g. Gyropolis 2npe,counter('tagVenus+tagEarth') pm,city
+        if (typeof expr[i] == "string" && expr[i].startsWith("counter(") && i + 1 < expr.length) {
+          items.push(...this.parseForEach(expr[i], expr[i + 1], depth + 1));
+          i++;
+          continue;
+        }
         for (let ret of this.parseExprItem(expr[i], depth + 1)) items.push(ret);
       }
     } else if (op == "/") {
@@ -327,6 +326,26 @@ class CustomRenders {
     return items;
   }
 
+  /** "gain for each source": counter(src) gain */
+  public static parseForEach(src: any, gain: any, depth: number): any[] {
+    const items = [];
+    // counter('tagVenus+tagEarth') counts several tag types
+    const multi = typeof src == "string" ? src.match(/^counter\('((?:tag\w+\+)+tag\w+)'\)$/) : null;
+    const retSrcs = multi ? multi[1].split("+").map((tag) => this.getParse(tag, depth)) : this.parseExprItem(src, depth);
+    const retGains = this.parseExprItem(gain, depth);
+    let isProd = false;
+    for (let retGain of retGains) {
+      if (retGain.production == true) isProd = true;
+      items.push(retGain);
+    }
+    for (let retSrc of retSrcs) {
+      retSrc.group = "FOREACH";
+      if (isProd) retSrc.production = true;
+      items.push(retSrc);
+    }
+    return items;
+  }
+
   public static getParse(item: string, depth: number = 0): any {
     let parse = null;
 
@@ -338,6 +357,7 @@ class CustomRenders {
     item = item.replace("ores(Animal)", "ores_Animal");
     item = item.replace("ores(Floater)", "ores_Floater");
     item = item.replace("ores(Floater,Jovian)", "ores_Floater");
+    item = item.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "ores_$1");
 
     item = item.replace("counter('(tagPlant>=3)*4')", "special_tagplant_sup3");
     item = item.replace("tagMicrobe/2", "special_tagmicrobe_half");
@@ -370,6 +390,7 @@ class CustomRenders {
   public static parseRulesToHtmlBlock(items: any): string {
     let rethtm = "";
     let foundor = false;
+    let foreach = false;
     for (let n of items) {
       if (n.item.divider && n.item.divider == "OR") {
         if (!foundor) {
@@ -380,7 +401,9 @@ class CustomRenders {
         }
       }
       //if (n.qty>1) rethtm+=n.qty+'&nbsp;';
-      if (n.item.group && n.item.group == "FOREACH" && items[0] != n) rethtm += "&nbsp;/&nbsp;";
+      // one separator before the sources, Gyropolis has two (Venus and Earth tags)
+      if (n.item.group && n.item.group == "FOREACH" && items[0] != n && !foreach) rethtm += "&nbsp;/&nbsp;";
+      foreach = n.item.group == "FOREACH";
       rethtm += this.parseSingleItemToHTML(n.item, n.qty);
     }
     return rethtm;
@@ -485,8 +508,34 @@ class CustomRenders {
     return ret;
   }
 
+  /**
+   * Requirement "one tag of each of these types", written in material as
+   * ((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3.
+   * Returns the tag types (without tagWild), or undefined if pre is not of that form.
+   */
+  public static getDistinctTagsPrereq(pre: any): string[] | undefined {
+    if (!Array.isArray(pre) || pre.length != 3 || pre[0] != ">=") return undefined;
+    const tags: string[] = [];
+    const collect = (node: any): boolean => {
+      if (node === "tagWild") return true;
+      if (!Array.isArray(node) || node.length != 3) return false;
+      if (node[0] == "+") return collect(node[1]) && collect(node[2]);
+      if (node[0] == ">" && typeof node[1] == "string" && node[1].startsWith("tag") && node[2] == 0) {
+        tags.push(node[1]);
+        return true;
+      }
+      return false;
+    };
+    if (!collect(pre[1]) || tags.length == 0 || tags.length != Number(pre[2])) return undefined;
+    return tags;
+  }
+
   public static parsePrereqToHTML(pre: any) {
     if (!pre) return "";
+    const distinctTags = this.getDistinctTagsPrereq(pre);
+    if (distinctTags) {
+      return '<div class="prereq_content mode_min">' + CustomRenders.parseActionsToHTML(distinctTags.join(" ")) + "</div></div>";
+    }
     let op = "";
     let what = "";
     let qty = 0;
@@ -516,6 +565,7 @@ class CustomRenders {
     let icon = CustomRenders.parseActionsToHTML(what);
     switch (what) {
       case "o":
+      case "v":
         suffix = "%";
         break;
       case "t":
@@ -541,7 +591,7 @@ class CustomRenders {
 
     let qtys: string;
     qtys = qty.toString();
-    if (qty == 0 && what != "o" && what != "t") qtys = "";
+    if (qty == 0 && what != "o" && what != "t" && what != "v") qtys = "";
     let htm = '<div class="prereq_content mode_' + mode + '">' + prefix + qtys + suffix + icon + "</div></div>";
 
     return htm;
@@ -549,6 +599,11 @@ class CustomRenders {
 
   public static parsePrereqToText(pre: any, game: GameXBody) {
     if (!pre) return "";
+    const distinctTags = this.getDistinctTagsPrereq(pre);
+    if (distinctTags) {
+      const names = distinctTags.map((tag) => game.getTokenName(tag)).join(", ");
+      return _("Requires at least one tag of each type: $tags.").replace("$tags", names);
+    }
     let op = "";
     let what = "";
     let qty = 0;
@@ -588,6 +643,9 @@ class CustomRenders {
         break;
       case "w":
         ret = mode == "min" ? _("Requires $v ocean tiles.") : _("$v ocean tiles or less.");
+        break;
+      case "v":
+        ret = mode == "min" ? _("Requires Venus $v%.") : _("Venus must be $v% or lower.");
         break;
       case "forest":
         if (qty == 0) qty = 1;
