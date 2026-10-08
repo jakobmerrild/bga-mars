@@ -1451,4 +1451,205 @@ final class VenusTest extends TestCase {
         $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
         $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
     }
+
+    // Step 9: Venus corporations
+
+    private function playCorp(GameUT $m, string $corp, string $color = PCOLOR) {
+        $m->effect_playCorporation($color, $corp, false);
+    }
+
+    private function resolvePending(GameUT $m, string $color = PCOLOR) {
+        for ($i = 0; $i < 5 && $this->topOp($m, $color); $i++) {
+            $this->resolveTop($m, null, $color);
+        }
+    }
+
+    /** put cards on top of the main deck, first in the list is drawn first */
+    private function stackDeck(GameUT $m, array $cards) {
+        $state = 1000 + count($cards);
+        foreach ($cards as $card) {
+            $m->tokens->moveToken($card, "deck_main", $state--);
+        }
+    }
+
+    private function runFirstAction(GameUT $m, string $corp, string $color = PCOLOR) {
+        $m->machine->interrupt();
+        $m->push($color, $m->getRulesFor($corp, "a1"));
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+    }
+
+    public function testAphroditeGainsOnAnyVenusRaise() {
+        $m = $this->venusGame();
+        $this->playCorp($m, "card_corp_14");
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "pp"));
+        $before = $m->getTrackerValue(PCOLOR, "m");
+        $this->raiseVenus($m, "2v", BCOLOR);
+        $this->resolvePending($m); // one trigger per step, in any order
+        $this->assertEquals(4, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($before + 4, $m->getTrackerValue(PCOLOR, "m"));
+    }
+
+    public function testAphroditeGainsOnWgtRaise() {
+        $m = $this->venusGame();
+        $this->playCorp($m, "card_corp_14");
+        $before = $m->getTrackerValue(PCOLOR, "m");
+        $this->resolveWgt($m, "tracker_v", BCOLOR);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($before + 2, $m->getTrackerValue(PCOLOR, "m"));
+    }
+
+    public function testManutechStartingProduction() {
+        $m = $this->venusGame();
+        $this->playCorp($m, "card_corp_16");
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "ps"));
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "s"));
+    }
+
+    public function testManutechGainsOnProductionIncrease() {
+        $m = $this->venusGame();
+        $this->playCorp($m, "card_corp_16");
+        $this->raiseVenus($m, "2pe");
+        $this->assertEquals(2, $m->getTrackerValue(PCOLOR, "pe"));
+        $this->assertEquals(2, $m->getTrackerValue(PCOLOR, "e"));
+        $before = $m->getTrackerValue(PCOLOR, "m");
+        $this->raiseVenus($m, "pm");
+        $this->assertEquals($before + 1, $m->getTrackerValue(PCOLOR, "m"));
+        // other players do not gain
+        $this->raiseVenus($m, "pe", BCOLOR);
+        $this->assertEquals(0, $m->getTrackerValue(BCOLOR, "e"));
+    }
+
+    public function testManutechNoGainOnDecrease() {
+        $m = $this->venusGame();
+        $this->playCorp($m, "card_corp_16");
+        $m->setTrackerValue(PCOLOR, "pe", 2);
+        $this->raiseVenus($m, "npe");
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "pe"));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "e"));
+    }
+
+    public function testMorningStarRevealUntil3Venus() {
+        $m = $this->venusGame();
+        $corp = "card_corp_17";
+        $this->playCorp($m, $corp);
+        $this->assertEquals("3draw(Venus)", $m->getRulesFor($corp, "a1"));
+        $this->stackDeck($m, ["card_main_1", "card_main_233", "card_main_3", "card_main_240", "card_main_255", "card_main_4"]);
+        $hand = $this->handCount($m, PCOLOR);
+        $discard = $m->tokens->countTokensInLocation("discard_main");
+        $this->runFirstAction($m, $corp);
+        $this->assertEquals($hand + 3, $this->handCount($m, PCOLOR));
+        foreach (["card_main_233", "card_main_240", "card_main_255"] as $card) {
+            $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation($card), $card);
+        }
+        $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_1"));
+        $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_3"));
+        $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_4"));
+        $this->assertEquals($discard + 2, $m->tokens->countTokensInLocation("discard_main"));
+    }
+
+    public function testCelesticRevealUntil2Floater() {
+        $m = $this->venusGame();
+        $corp = "card_corp_15";
+        $this->playCorp($m, $corp);
+        $this->assertEquals("2draw(Floater)", $m->getRulesFor($corp, "a1"));
+        $this->assertTrue($m->hasFloaterIcon("card_main_222")); // Dirigibles, holds floaters
+        $this->assertTrue($m->hasFloaterIcon("card_main_215")); // Air-Scrapping Expedition, only adds them
+        $this->assertTrue($m->hasFloaterIcon("card_main_214")); // Aerosport Tournament, requires them
+        $this->assertFalse($m->hasFloaterIcon("card_main_233"));
+        $this->stackDeck($m, ["card_main_1", "card_main_222", "card_main_3", "card_main_215", "card_main_4"]);
+        $this->runFirstAction($m, $corp);
+        $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation("card_main_222"));
+        $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation("card_main_215"));
+        $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_1"));
+        $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_3"));
+        $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_4"));
+    }
+
+    public function testCelesticActionAndVp() {
+        $m = $this->venusGame();
+        $corp = "card_corp_15";
+        $this->playCorp($m, $corp);
+        $this->runCardAction($m, $corp);
+        $this->choose($m, "ores(Floater)", $corp);
+        $this->assertEquals(1, $this->resOn($m, $corp));
+        $this->addFloaters($m, $corp, 5);
+        $this->assertEquals(2, $this->cardVp($m, $corp));
+    }
+
+    private function activate(GameUT $m, string $card, string $color = PCOLOR) {
+        $m->machine->interrupt();
+        $m->push($color, "activate");
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        if ($this->topOpTypes($m, $color) == ["activate"]) {
+            $this->choose($m, "activate", $card, null, $color);
+        } // otherwise the only activatable card was chosen automatically
+    }
+
+    private function reuseOk(GameUT $m, string $viron, string $card): bool {
+        $op = $m->getOperationInstanceFromType("reuse", PCOLOR, 1, "$viron:a");
+        $info = $op->argPrimaryDetails();
+        return isset($info[$card]) && $info[$card]["q"] == MA_OK;
+    }
+
+    public function testVironReusesUsedAction() {
+        $m = $this->venusGame();
+        $viron = "card_corp_18";
+        $this->playCorp($m, $viron);
+        $center = $this->onTableau($m, "Development Center");
+        $m->setTrackerValue(PCOLOR, "e", 2);
+        $hand = $this->handCount($m, PCOLOR);
+        $this->activate($m, $center);
+        for ($i = 0; $i < 3 && $this->topOp($m); $i++) {
+            $this->resolveTop($m); // draw confirmation
+        }
+        $this->assertEquals($hand + 1, $this->handCount($m, PCOLOR));
+        $this->assertEquals(MA_CARD_STATE_ACTION_USED, $m->tokens->getTokenState($center));
+
+        $this->activate($m, $viron);
+        $this->assertEquals(MA_CARD_STATE_ACTION_USED, $m->tokens->getTokenState($viron));
+        for ($i = 0; $i < 3 && $this->topOp($m); $i++) {
+            $this->resolveTop($m, $this->topOp($m)["type"] == "reuse" ? $center : null);
+        }
+        $this->assertEquals($hand + 2, $this->handCount($m, PCOLOR));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "e"));
+        $this->assertEquals(MA_CARD_STATE_ACTION_USED, $m->tokens->getTokenState($center));
+    }
+
+    public function testVironVoidWithoutUsedActions() {
+        $m = $this->venusGame();
+        $viron = "card_corp_18";
+        $this->playCorp($m, $viron);
+        $center = $this->onTableau($m, "Development Center");
+        $m->setTrackerValue(PCOLOR, "e", 2);
+        $this->assertTrue($m->isVoidSingle("reuse", PCOLOR, 1, "$viron:a"));
+        $op = $m->getOperationInstanceFromType("activate", PCOLOR);
+        $this->assertEquals(MA_ERR_ACTIONCOST, $op->argPrimaryDetails()[$viron]["q"]);
+
+        $m->dbSetTokenState($center, MA_CARD_STATE_ACTION_USED);
+        $this->assertFalse($m->isVoidSingle("reuse", PCOLOR, 1, "$viron:a"));
+        // a used action whose cost cannot be paid does not count either
+        $m->setTrackerValue(PCOLOR, "e", 0);
+        $this->assertTrue($m->isVoidSingle("reuse", PCOLOR, 1, "$viron:a"));
+    }
+
+    public function testVironCannotReuseItself() {
+        $m = $this->venusGame();
+        $viron = "card_corp_18";
+        $this->playCorp($m, $viron);
+        $center = $this->onTableau($m, "Development Center");
+        $m->setTrackerValue(PCOLOR, "e", 1);
+        $m->dbSetTokenState($center, MA_CARD_STATE_ACTION_USED);
+        $m->dbSetTokenState($viron, MA_CARD_STATE_ACTION_USED);
+        $this->assertTrue($this->reuseOk($m, $viron, $center));
+        $this->assertFalse($this->reuseOk($m, $viron, $viron));
+    }
+
+    public function testVenusCorpsDealtOnlyWithVenus() {
+        $m = $this->venusGame(0);
+        for ($num = 14; $num <= 18; $num++) {
+            $this->assertNull($m->tokens->getTokenInfo("card_corp_$num"), "card_corp_$num");
+        }
+    }
 }
