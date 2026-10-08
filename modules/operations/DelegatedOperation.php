@@ -25,7 +25,12 @@ class DelegatedOperation extends AbsOperation {
         $this->user_args =  $args;
    
         if ($this->getUserCount() > 0 || !$this->isOptional()) {
-            $this->delegate->action_resolve($args);
+            $resolved = $this->delegate->action_resolve($args);
+            $left = $this->delegate->getUserCount() - $resolved;
+            if ($left > 0) {
+                // delegate resolved only part of its count (i.e. draw until tag), put the rest back on top
+                $this->game->machine->push($this->delegate->op_info["type"], $left, $left, $this->color, MACHINE_OP_SEQ, $this->op_info['data'] ?? "");
+            }
         } else {
             $this->game->notifyWithName('message',clienttranslate('${player_name} skips ${name}'), $this->arg()['args'], $this->getPlayerId());
         }
