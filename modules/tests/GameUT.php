@@ -63,16 +63,21 @@ class GameUT extends terraformingmars {
         return $this->multimachine;
     }
 
-    function fakeUserAction($op, $target = null, bool $no_stack = false) {
+    function fakeUserAction($op, $target = null, bool $no_stack = false, ?int $count = null) {
         $args = ["op_info" => $op];
         if ($target !== null) {
             $args["target"] = $target;
         }
+        if ($count !== null) {
+            $args["count"] = $count;
+        }
+        // like action_resolve: tops before resolving, a complex op expands into new tops while resolving
+        $tops = $this->machine->getTopOperations($op["owner"] ?? null);
         $count = $this->saction_resolve($op, $args);
         if ($no_stack) {
             return $count;
         }
-        $this->saction_stack($count, $op);
+        $this->saction_stack($count, $op, $tops);
         return $count;
     }
 

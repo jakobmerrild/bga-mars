@@ -74,6 +74,9 @@ tagEvent|Event
 tagFighter|Fighter
 resAnimal|Animal
 resMicrobe|Microbe
+#resource types without a tag of the same name, used in logs as tag<holds>
+tagFloater|Floater
+tagAsteroid|Asteroid
 #set nc=
 
 #set type=tracker badge 
