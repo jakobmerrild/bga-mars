@@ -593,12 +593,35 @@ final class VenusTest extends TestCase {
         $this->assertCount(1, $ops);
         $m->fakeUserAction($ops[0], "tracker_t");
         $types = array_column($m->machine->getTopOperations(), "type");
-        $this->assertEquals(["coloprod"], $types);
+        $this->assertEquals(["endgen"], $types);
         $tops = $m->machine->getTopOperations();
         $m->executeOperationSingle(reset($tops));
         $this->assertColonyProductionDone($before, $this->colonyLevels($m));
         $types = array_column($m->machine->getTopOperations(), "type");
         $this->assertEquals(["research"], $types);
+    }
+
+    public function testFirstPlayerMovesAfterWgt() {
+        $m = $this->venusGame();
+        $starting = $m->getCurrentStartingPlayer();
+        $m->effect_endOfTurn();
+        $this->assertEquals($starting, $m->getCurrentStartingPlayer());
+        $this->assertEquals($starting, $m->getActivePlayerId());
+
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $m->fakeUserAction($ops[0], "tracker_t");
+        $this->assertEquals($starting, $m->getCurrentStartingPlayer());
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["endgen"], $types);
+
+        $tops = $m->machine->getTopOperations();
+        $m->executeOperationSingle(reset($tops));
+        $next = $m->getPlayerAfter($starting);
+        $this->assertEquals($next, $m->getCurrentStartingPlayer());
+        $ops = array_values($m->machine->getTopOperations());
+        $this->assertEquals("research", $ops[0]["type"]);
+        $this->assertEquals($m->custom_getPlayerColorById($next), $ops[0]["owner"]);
     }
 
     public function testColoniesOnlyProductionUnchanged() {

@@ -142,7 +142,7 @@ counter|Special Counter
 convh|Convert heat into temperature|${you} must confirm spent 8 heat to increase temperature by 1 step
 convp|Convert plants into Greenery|${you} must confirm spent plants to place a Greenery
 finalscoring|Final Scoring
-coloprod|Colony Production
+endgen|End of Generation
 cardx|Play Card
 acard5|Search for Life
 flip|Flip
