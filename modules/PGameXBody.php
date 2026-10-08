@@ -2433,12 +2433,16 @@ abstract class PGameXBody extends PGameMachine {
                 "_notifType" => "message_warning",
             ]);
         }
-        // check bonus, World Government Terraforming gives no bonuses
-        for ($i = $perstep; !$wgt && $i <= $inc; $i += $perstep) {
+        // check bonus, World Government Terraforming only gives the bonuses that raise another global
+        // parameter (temperature, ocean), and those also give no TR and no placement bonuses
+        for ($i = $perstep; $i <= $inc; $i += $perstep) {
             $v = $current + $i;
             $nvalue = $v >= 0 ? $v : "n" . -$v;
             $bounus_name = "param_{$type}_{$nvalue}";
             $bonus = $this->getRulesFor($bounus_name, "r");
+            if ($bonus && $wgt) {
+                $bonus = in_array($bonus, ["t", "w"]) ? "$bonus(wgt)" : "";
+            }
             if ($bonus) {
                 //$this->debugLog("-param bonus $bonus");
                 $this->notifyMessageWithTokenName(clienttranslate('Parameter ${token_name} increase triggers a bonus'), $token_id);

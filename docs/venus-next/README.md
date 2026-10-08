@@ -87,7 +87,9 @@ Every brief uses these names. If a step has to change one, update this table and
    modifies only Venus requirements, stacking with the others.
 4. World Government Terraforming (WGT): in the solar phase after production, if the game is not ending, the
    first player of the generation raises one non-maxed parameter (temperature, oxygen, ocean or Venus).
-   No TR and no bonuses of any kind (no track bonuses, no ocean/tile placement bonuses).
+   No TR and no player bonuses (no heat production, no Venus 8%/16% draw/TR, no ocean/tile placement
+   bonuses). Track bonuses that raise another parameter still happen without TR: oxygen 8% raises
+   temperature, temperature 0 places an ocean (the first player chooses where).
 5. WGT raising Venus **does** trigger Aphrodite.
 6. Solo with Venus Next (standard flavour): winning requires all four parameters maxed, Venus included.
    Still 14 TR and 14 generations. WGT runs every generation, the solo player chooses, and it is skipped in

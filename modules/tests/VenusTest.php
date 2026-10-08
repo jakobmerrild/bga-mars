@@ -13,8 +13,9 @@ use PHPUnit\Framework\TestCase;
  *    The general delta (tracker_pdelta, onPre_delta) applies to t/o/w and v. Morning Star Inc.
  *    adds a Venus-only delta (tracker_pdeltav) on top, stacking with the general one.
  * Q2 World Government Terraforming raising Venus triggers Aphrodite (raise_v fires).
- * Q3 WGT gives no TR and no bonuses of any kind: no track bonuses (O2 8% temp, temp ocean,
- *    Venus 8%/16%) and no ocean/tile placement bonuses.
+ * Q3 WGT gives no TR and no player bonuses: no heat production, no Venus 8%/16% draw/TR and no
+ *    ocean/tile placement bonuses. Track bonuses that raise another global parameter still happen
+ *    (O2 8% raises temperature, temperature 0 places an ocean), also without TR.
  * Q4 Solo (official rules, standard flavour): winning requires all four parameters maxed,
  *    Venus included. Still 14 TR and 14 generations. WGT runs every generation, the solo player
  *    (always first player) chooses, and it is skipped in the last generation because the Game End
@@ -458,13 +459,58 @@ final class VenusTest extends TestCase {
         $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
     }
 
-    public function testWgtOxygenNoTemperatureBonus() {
+    // the bonus ocean waits for the player to choose where it goes, then is placed on the chosen hex
+    private function placeBonusOcean(GameUT $m, string $color = PCOLOR) {
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertNotFalse($op, "expected an ocean placement");
+        $this->assertMatchesRegularExpression('/^w(\(|$)/', $op["type"], "expected an ocean placement");
+        $this->assertEquals($color, $op["owner"]);
+        $this->assertEquals($w, $m->tokens->getTokenState("tracker_w"), "ocean placed without the player's choice");
+
+        $free = array_keys(array_filter($m->getPlanetMap(), fn($info, $hex) => isset($info["ocean"]) && !$m->tokens->getTokenOnLocation($hex), ARRAY_FILTER_USE_BOTH));
+        $hex = end($free); // not the first free hex, so an automatic pick would not pass
+        $m->fakeUserAction($op, $hex);
+        $m->st_gameDispatch();
+        $this->assertStringStartsWith("tile_3_", $m->tokens->getTokenOnLocation($hex)["key"] ?? "");
+    }
+
+    public function testWgtOxygenRaisesTemperatureBonus() {
         $m = $this->venusGame();
         $m->tokens->setTokenState("tracker_o", 7);
         $t = $m->tokens->getTokenState("tracker_t");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
         $this->resolveWgt($m, "tracker_o");
         $this->assertEquals(8, $m->tokens->getTokenState("tracker_o"));
-        $this->assertEquals($t, $m->tokens->getTokenState("tracker_t"));
+        $this->assertEquals($t + 2, $m->tokens->getTokenState("tracker_t"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtTemperaturePlacesOceanBonus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_t", -2);
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_t");
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_t"));
+        $this->placeBonusOcean($m);
+        $this->assertEquals($w + 1, $m->tokens->getTokenState("tracker_w"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtOxygenRaisesTemperatureWhichPlacesOcean() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_o", 7);
+        $m->tokens->setTokenState("tracker_t", -2);
+        $w = $m->tokens->getTokenState("tracker_w");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_o");
+        $this->assertEquals(8, $m->tokens->getTokenState("tracker_o"));
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_t"));
+        $this->placeBonusOcean($m);
+        $this->assertEquals($w + 1, $m->tokens->getTokenState("tracker_w"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
     }
 
     public function testWgtOceanNoPlacementBonus() {
