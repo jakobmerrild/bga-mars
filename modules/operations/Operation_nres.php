@@ -34,6 +34,13 @@ class Operation_nres extends AbsOperation {
 
     protected function getOpName() {
         $card = $this->getContext();
+        $param = $this->getParam(0);
+        if ($param) {
+            return ['log' => clienttranslate('Remove ${restype_name} from your card'),  "args" => [
+                'restype_name' => $this->game->getTokenName("tag$param"),
+                'i18n' => ['restype_name']
+            ]];
+        }
         $par = $this->game->getRulesFor($card, 'holds', '');
         return ['log' => clienttranslate('Remove ${restype_name} from ${card_name}'),  "args" => [
             "card_name" => $this->game->getTokenName($card),

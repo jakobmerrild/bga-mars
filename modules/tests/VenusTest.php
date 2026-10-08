@@ -578,4 +578,234 @@ final class VenusTest extends TestCase {
         $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdeltav_" . PCOLOR));
         $this->assertEquals(0, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
     }
+
+    // Step 8B: project cards with floaters, microbes, animals and asteroids
+
+    /** put a card on the tableau without playing its rules */
+    private function onTableau(GameUT $m, string $name, string $color = PCOLOR): string {
+        $card = $m->mtFind("name", $name);
+        $this->assertNotNull($card, $name);
+        $this->addFloaters($m, $card, 0, $color);
+        return $card;
+    }
+
+    private function playResourceCard(GameUT $m, string $name, string $color = PCOLOR): string {
+        $card = $m->mtFind("name", $name);
+        $this->assertNotNull($card, $name);
+        $m->effect_playCard($color, $card);
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        return $card;
+    }
+
+    private function runCardAction(GameUT $m, string $card, string $color = PCOLOR) {
+        $m->machine->interrupt(); // ahead of whatever turn is on the stack
+        $m->push($color, $m->getRulesFor($card, "a"), $card);
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+    }
+
+    private function topOpTypes(GameUT $m, string $color = PCOLOR): array {
+        return array_values(array_map(fn($op) => $op["type"], $m->machine->getTopOperations($color)));
+    }
+
+    /** resolve the single top operation of the given type, with an optional target */
+    private function choose(GameUT $m, string $type, $target = null, ?int $count = null, string $color = PCOLOR) {
+        $found = array_filter($m->machine->getTopOperations($color), fn($op) => $op["type"] == $type);
+        $this->assertCount(1, $found, "$type in " . json_encode($this->topOpTypes($m, $color)));
+        $m->fakeUserAction(reset($found), $target, false, $count);
+        $m->st_gameDispatch();
+    }
+
+    private function targets(GameUT $m, string $type, string $context, string $color = PCOLOR): array {
+        $op = $m->getOperationInstanceFromType($type, $color, 1, $context);
+        return array_keys($op->argPrimaryDetails());
+    }
+
+    private function resOn(GameUT $m, string $card): int {
+        return $m->tokens->countTokensInLocation($card);
+    }
+
+    private function cardVp(GameUT $m, string $card, string $color = PCOLOR) {
+        return $m->evaluateExpression($m->getRulesFor($card, "vp"), $color, $card);
+    }
+
+    public function testAirScrappingExpeditionOnlyVenusTargets() {
+        $m = (new GameUT())->init(0, 1, 1);
+        $this->onTableau($m, "Jupiter Floating Station");
+        $dirigibles = $this->onTableau($m, "Dirigibles");
+        $card = $m->mtFind("name", "Air-Scrapping Expedition");
+        $this->assertEquals([$dirigibles], $this->targets($m, "ores(Floater,Venus)", $card));
+
+        $this->playResourceCard($m, "Air-Scrapping Expedition");
+        $this->choose($m, "ores(Floater,Venus)", $dirigibles);
+        $this->assertEquals(3, $this->resOn($m, $dirigibles));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+    }
+
+    public function testAtmoscoopChoiceTempOrVenus() {
+        $m = $this->venusGame();
+        $dirigibles = $this->onTableau($m, "Dirigibles");
+        $this->playResourceCard($m, "Atmoscoop");
+        $types = $this->topOpTypes($m);
+        $this->assertContains("2t", $types);
+        $this->assertContains("2v", $types);
+        $this->choose($m, "2v");
+        $this->choose($m, "ores(Floater)", $dirigibles);
+        $this->assertEquals(4, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals(2, $this->resOn($m, $dirigibles));
+    }
+
+    public function testExtractorBalloonsSpend2Floaters() {
+        $m = $this->venusGame();
+        $card = $this->playResourceCard($m, "Extractor Balloons");
+        $this->assertEquals(3, $this->resOn($m, $card));
+        $this->runCardAction($m, $card);
+        $this->choose($m, "2nres:v");
+        $this->assertEquals(1, $this->resOn($m, $card));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+    }
+
+    public function testJetStreamTitaniumForFloaters() {
+        $m = $this->venusGame();
+        $card = $this->onTableau($m, "Jet Stream Microscrappers");
+        $m->setTrackerValue(PCOLOR, "u", 1);
+        $this->runCardAction($m, $card); // no floaters to spend: titanium option is the only one
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "u"));
+        $this->assertEquals(2, $this->resOn($m, $card));
+    }
+
+    public function testRotatorImpactsPayWithTitanium() {
+        $m = $this->venusGame();
+        $card = $this->onTableau($m, "Rotator Impacts");
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        $m->setTrackerValue(PCOLOR, "u", 2);
+        $this->runCardAction($m, $card);
+        $this->choose($m, "nmu", "2u");
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "u"));
+        $this->assertEquals(10, $m->getTrackerValue(PCOLOR, "m"));
+        $this->assertEquals(1, $this->resOn($m, $card));
+        $this->assertEquals("Asteroid", $m->getTokenName("tagAsteroid"));
+
+        $this->runCardAction($m, $card);
+        $this->choose($m, "nres:v");
+        $this->assertEquals(0, $this->resOn($m, $card));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+    }
+
+    public function testStratosphericBirdsRequiresFloater() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 12);
+        $m->setTrackerValue(PCOLOR, "m", 20);
+        $birds = $m->mtFind("name", "Stratospheric Birds");
+        $dirigibles = $this->onTableau($m, "Dirigibles");
+        $this->assertNotEquals(MA_OK, $m->playability(PCOLOR, $birds));
+
+        $this->addFloaters($m, $dirigibles, 1);
+        $this->assertEquals(MA_OK, $m->playability(PCOLOR, $birds));
+        $this->playResourceCard($m, "Stratospheric Birds"); // the only floater card is chosen automatically
+        $this->assertEquals(0, $this->resOn($m, $dirigibles));
+        $this->assertEquals(0, $this->resOn($m, $birds));
+    }
+
+    public function testSulphurEatingBacteriaTripleMC() {
+        $m = $this->venusGame();
+        $card = $this->onTableau($m, "Sulphur-Eating Bacteria");
+        $this->addFloaters($m, $card, 3);
+        $before = $m->getTrackerValue(PCOLOR, "m");
+        $this->runCardAction($m, $card);
+        $this->choose($m, "counter(resCard,1):nres,m,m,m");
+        $this->choose($m, "nres,m,m,m", null, 3);
+        $this->assertEquals($before + 9, $m->getTrackerValue(PCOLOR, "m"));
+        $this->assertEquals(0, $this->resOn($m, $card));
+    }
+
+    public function testCorroderSuitsAnyResourceVenusCard() {
+        $m = $this->venusGame();
+        $birds = $this->onTableau($m, "Stratospheric Birds");
+        $this->onTableau($m, "Regolith Eaters"); // microbe card without a Venus tag
+        $pm = $m->getTrackerValue(PCOLOR, "pm");
+        $card = $m->mtFind("name", "Corroder Suits");
+        $this->assertEquals([$birds], $this->targets($m, "ores(Any,Venus)", $card));
+        $this->playResourceCard($m, "Corroder Suits");
+        $this->choose($m, "ores(Any,Venus)", $birds);
+        $this->assertEquals(1, $this->resOn($m, $birds));
+        $this->assertEquals(1, $m->evaluateExpression("resCard", PCOLOR, $birds));
+        $this->assertEquals($pm + 2, $m->getTrackerValue(PCOLOR, "pm"));
+    }
+
+    public function testMaxwellBaseNotItself() {
+        $m = $this->venusGame();
+        $maxwell = $this->onTableau($m, "Maxwell Base");
+        $insects = $this->onTableau($m, "Venusian Insects");
+        $targets = $this->targets($m, $m->getRulesFor($maxwell, "a"), $maxwell);
+        $this->assertNotContains($maxwell, $targets);
+        $this->assertEquals([$insects], $targets);
+    }
+
+    public function testHydrogenToVenusPerJovian() {
+        $m = $this->venusGame();
+        $dirigibles = $this->onTableau($m, "Dirigibles");
+        $m->tokens->setTokenState("tracker_tagJovian_" . PCOLOR, 2);
+        $this->playResourceCard($m, "Hydrogen to Venus");
+        $this->choose($m, "ores(Floater,Venus)", $dirigibles);
+        $this->assertEquals(2, $this->resOn($m, $dirigibles));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+    }
+
+    public function testFloatingHabsVp() {
+        $m = $this->venusGame();
+        $card = $this->onTableau($m, "Floating Habs");
+        $this->addFloaters($m, $card, 5);
+        $this->assertEquals(2, $this->cardVp($m, $card));
+    }
+
+    public function testStratopolisVp() {
+        $m = $this->venusGame();
+        $card = $this->onTableau($m, "Stratopolis");
+        $this->addFloaters($m, $card, 7);
+        $this->assertEquals(2, $this->cardVp($m, $card));
+    }
+
+    public function testVenusFloaterCardWithColoniesFloaterTarget() {
+        $m = (new GameUT())->init(0, 1, 1);
+        $mappers = $this->onTableau($m, "Aerial Mappers");
+        $titan = $this->onTableau($m, "Titan Air-Scrapping");
+        $targets = $this->targets($m, "ores(Floater)", $mappers);
+        $this->assertContains($titan, $targets);
+        $this->assertContains($mappers, $targets); // ANY card includes this one
+    }
+
+    public function testFreyjaBiodomesNeedsEnergyProduction() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 10);
+        $m->setTrackerValue(PCOLOR, "m", 20);
+        $card = $m->mtFind("name", "Freyja Biodomes");
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $m->playability(PCOLOR, $card));
+        $m->setTrackerValue(PCOLOR, "pe", 1);
+        $this->assertEquals(MA_OK, $m->playability(PCOLOR, $card));
+
+        $birds = $this->onTableau($m, "Stratospheric Birds");
+        $this->onTableau($m, "Regolith Eaters"); // microbe card without a Venus tag
+        $pm = $m->getTrackerValue(PCOLOR, "pm");
+        $this->playResourceCard($m, "Freyja Biodomes");
+        $this->assertEquals([$birds], $this->targets($m, "ores(Animal,Venus)", $card));
+        $this->assertEquals(["none"], $this->targets($m, "ores(Microbe,Venus)", $card));
+        $this->choose($m, "2ores(Animal,Venus)", $birds);
+        $this->assertEquals(2, $this->resOn($m, $birds));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "pe"));
+        $this->assertEquals($pm + 2, $m->getTrackerValue(PCOLOR, "pm"));
+    }
+
+    public function testVenusSoilsAnotherCard() {
+        $m = $this->venusGame();
+        $insects = $this->onTableau($m, "Venusian Insects");
+        $pp = $m->getTrackerValue(PCOLOR, "pp");
+        $soils = $this->playResourceCard($m, "Venus Soils");
+        $this->choose($m, "ores(Microbe)", $insects);
+        $this->assertEquals(2, $this->resOn($m, $insects));
+        $this->assertEquals(0, $this->resOn($m, $soils));
+        $this->assertEquals($pp + 1, $m->getTrackerValue(PCOLOR, "pp"));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+    }
 }

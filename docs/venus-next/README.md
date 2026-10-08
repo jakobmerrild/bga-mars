@@ -73,6 +73,7 @@ Every brief uses these names. If a step has to change one, update this table and
 | `isSoloTerraformingComplete()` | 5 | solo win check including Venus |
 | `milestone_6` Hoverlord, `award_6` Venuphile | 6 | added on every map when Venus is on |
 | hexes named `Dawn City`, `Luna Metropolis`, `Maxwell Base`, `Stratopolis` (`inspace=1`, `reserved=1`) | 7 | off-Mars city areas |
+| op `ores(Any,<Tag>)` | 8B | add 1 resource to your card with that tag; the type is whatever the target holds |
 | op `revealuntil` | 9 | reveal cards until N match |
 | op `reuse` | 9 | Viron: reuse an action used this generation |
 
