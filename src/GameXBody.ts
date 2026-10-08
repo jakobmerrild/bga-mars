@@ -287,7 +287,7 @@ class GameXBody extends GameTokens {
     const list = ["milestone", "award"];
     for (const type of list) {
       const mainnode = $(`display_${type}s`);
-      for (let x = 1; x <= 5; x++) {
+      for (let x = 1; this.gamedatas.token_types[`${type}_${x}`]; x++) {
         mainnode.insertAdjacentHTML(
           "beforeend",
           `<div id="${type}_${x}" class="${type} ${type}_${x} mileaw_item"><div id="${type}_label_${x}" class="${type}_label"></div></div>`
@@ -1476,6 +1476,11 @@ class GameXBody extends GameTokens {
       );
     } else if (key.startsWith("tracker_forest") || key.startsWith("tracker_land")) {
       txt += this.generateTooltipSection(_("Tiles on Mars"), _("Number of corresponding tiles played on Mars."));
+    } else if (key.startsWith("tracker_pdeltav")) {
+      txt += this.generateTooltipSection(
+        _("Venus requirements delta"),
+        _("Your Venus requirements are +X or -X steps, your choice in each case.")
+      );
     } else if (key.startsWith("tracker_pdelta")) {
       txt += this.generateTooltipSection(
         _("Global parameters delta"),

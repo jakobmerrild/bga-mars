@@ -661,4 +661,202 @@ final class VenusTest extends TestCase {
         $m->tokens->setTokenState("tracker_v", 30);
         $this->assertFalse($m->isSoloGoalAchieved(PCOLOR));
     }
+
+    // Step 6 - Hoverlord milestone and Venuphile award
+
+    private function addFloaters(GameUT $m, string $card, int $count, string $color = PCOLOR) {
+        if ($m->tokens->getTokenLocation($card) != "tableau_$color") {
+            $m->dbSetTokenLocation($card, "tableau_$color", MA_CARD_STATE_ACTION_UNUSED);
+        }
+        for ($i = 0; $i < $count; $i++) {
+            $res = $m->createPlayerResource($color);
+            $m->tokens->moveToken($res, $card, 1);
+        }
+        $m->clean_cache();
+    }
+
+    private function claimStatus(GameUT $m, string $optype, string $target, string $color = PCOLOR) {
+        $op = $m->getOperationInstanceFromType($optype, $color);
+        $args = $op->argPrimaryDetails();
+        $this->assertArrayHasKey($target, $args);
+        return $args[$target]["q"];
+    }
+
+    public function testVenusOptionOnAddsHoverlordAndVenuphile() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 1);
+            $this->assertEquals("Hoverlord", $m->getTokenName("milestone_6"), "map $map");
+            $this->assertEquals("Venuphile", $m->getTokenName("award_6"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+            $this->assertEquals("display_milestones", $m->tokens->getTokenLocation("milestone_6"), "map $map");
+            $this->assertEquals("display_awards", $m->tokens->getTokenLocation("award_6"), "map $map");
+        }
+    }
+
+    public function testVenusMilestonesAbsentWithoutVenus() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 0);
+            $this->assertNull($m->tokens->getTokenInfo("milestone_6"), "map $map");
+            $this->assertNull($m->tokens->getTokenInfo("award_6"), "map $map");
+            $this->assertArrayNotHasKey("milestone_6", $m->token_types, "map $map");
+            $this->assertArrayNotHasKey("award_6", $m->token_types, "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+        }
+    }
+
+    public function testHoverlordClaim() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        // Aerial Mappers and Deuterium Export hold floaters
+        $this->addFloaters($m, "card_main_213", 4);
+        $this->addFloaters($m, "card_main_221", 2);
+        $this->assertEquals(6, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_ERR_PREREQ, $this->claimStatus($m, "claim", "milestone_6"));
+        $this->addFloaters($m, "card_main_221", 1);
+        $this->assertEquals(7, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+
+        $marker = $m->createPlayerMarker(PCOLOR);
+        $m->tokens->moveToken($marker, "milestone_6", 1);
+        $m->tokens->setTokenState("milestone_6", 1);
+        $table = [];
+        $m->scoreAll($table);
+        $player_id = $m->getPlayerIdByColor(PCOLOR);
+        $this->assertEquals(5, $table[$player_id]["details"]["milestones"]["milestone_6"]["vp"]);
+        $this->assertEquals(5, $table[$player_id]["total_details"]["milestones"]);
+    }
+
+    public function testVenuphileAward() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->tokens->setTokenState("tracker_tagVenus_" . PCOLOR, 2);
+        $m->tokens->setTokenState("tracker_tagVenus_" . BCOLOR, 1);
+        $m->clean_cache();
+        $this->assertEquals(2, $m->evaluateExpression("tagVenus", PCOLOR));
+        $table = [];
+        $m->scoreAward("award_6", $table);
+        $p = $m->getPlayerIdByColor(PCOLOR);
+        $b = $m->getPlayerIdByColor(BCOLOR);
+        $this->assertEquals(1, $table[$p]["details"]["awards"]["award_6"]["place"]);
+        $this->assertEquals(5, $table[$p]["details"]["awards"]["award_6"]["vp"]);
+        $this->assertEquals(0, $table[$b]["details"]["awards"]["award_6"]["vp"]);
+    }
+
+    public function testMaxThreeMilestonesStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        $this->addFloaters($m, "card_main_213", 7);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "milestone_$num", 1);
+            $m->tokens->setTokenState("milestone_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "claim", "milestone_6"));
+    }
+
+    public function testMaxThreeAwardsStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 30);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "fund", "award_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "award_$num", 1);
+            $m->tokens->setTokenState("award_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "fund", "award_6"));
+    }
+
+    // Step 4: Venus requirements and requirement modifiers
+
+    private function venusPre(GameUT $m, int $v, string $card, string $color = PCOLOR): int {
+        $m->tokens->setTokenState("tracker_v", $v);
+        return $m->precondition($color, $card);
+    }
+
+    public function testVenusMinRequirement() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Neutralizer Factory");
+        $this->assertEquals("card_main_240", $card);
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 8, $card));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 10, $card));
+    }
+
+    public function testVenusMaxRequirement() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Rotator Impacts");
+        $this->assertEquals(MA_OK, $this->venusPre($m, 14, $card));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 16, $card));
+    }
+
+    public function testAerosportNeedsFiveFloaters() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Aerosport Tournament");
+        $dirigibles = $m->mtFind("name", "Dirigibles");
+        $m->dbSetTokenLocation($dirigibles, "tableau_" . PCOLOR, MA_CARD_STATE_ACTION_UNUSED);
+        $m->executeImmediately(PCOLOR, "res", 4, $dirigibles);
+        $this->assertEquals(4, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition(PCOLOR, $card));
+        $m->executeImmediately(PCOLOR, "res", 1, $dirigibles);
+        $this->assertEquals(MA_OK, $m->precondition(PCOLOR, $card));
+    }
+
+    public function testAdaptationTechnologyAppliesToVenus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdelta_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240")); // v>=10
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 4, "card_main_240"));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 18, "card_main_243")); // v<=14
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 20, "card_main_243"));
+    }
+
+    public function testSpecialDesignAppliesToVenus() {
+        $m = $this->venusGame();
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 6, "card_main_240"));
+        $m->effect_playCard(PCOLOR, $m->mtFind("name", "Special Design"));
+        $m->clearEventListenerCache();
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+    }
+
+    public function testInventrixAppliesToVenus() {
+        $m = $this->venusGame();
+        $m->effect_playCorporation(PCOLOR, "card_corp_6", false);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+    }
+
+    public function testVenusDeltaAppliesOnlyToVenus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+        $eos = $m->mtFind("name", "Eos Chasma National Park"); // t>=-12
+        $m->tokens->setTokenState("tracker_t", -16);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition(PCOLOR, $eos));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 6, "card_main_240", BCOLOR));
+    }
+
+    public function testVenusDeltaWorksForMaxReq() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Spin-Inducing Asteroid"); // v<=10
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 14, $card));
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 14, $card));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 16, $card));
+    }
+
+    public function testMorningStarStacksWithAdaptationTechnology() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdelta_" . PCOLOR, 2);
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 2, "card_main_240"));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 0, "card_main_240"));
+    }
+
+    public function testMorningStarCorpSetsDelta() {
+        $m = $this->venusGame();
+        $m->effect_playCorporation(PCOLOR, "card_corp_17", false);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdeltav_" . PCOLOR));
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
+    }
 }

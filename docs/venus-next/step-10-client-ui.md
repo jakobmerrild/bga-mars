@@ -60,6 +60,8 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
 7. **Payment**: Dirigibles floaters appear as a payment option when paying for a Venus card (if not
    already done in step 8C).
 8. **Revealed cards** from `revealuntil` are shown in the log.
+9. **Morning Star delta**: `tracker_pdeltav_<color>` (step 4, `player_tags_<color>`) has a tooltip but no
+   icon; give it one like `tracker_pdelta` (`.tracker_pdelta` in `GameXBody.scss` / `PlayerBoard.scss`).
 
 ## Tests
 

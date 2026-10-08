@@ -82,6 +82,7 @@ e|Gain Energy
 h|Gain Heat
 u|Gain Titanium
 pdelta|Increase Global Parameter Requirements Delta
+pdeltav|Increase Venus Requirements Delta
 
 #set class=Operation_q
 q|Gain Any Standard Resource|${you} must select a resource to gain

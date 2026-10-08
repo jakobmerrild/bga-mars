@@ -4417,7 +4417,7 @@ var GameXBody = /** @class */ (function (_super) {
         for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
             var type = list_1[_i];
             var mainnode = $("display_".concat(type, "s"));
-            for (var x = 1; x <= 5; x++) {
+            for (var x = 1; this.gamedatas.token_types["".concat(type, "_").concat(x)]; x++) {
                 mainnode.insertAdjacentHTML("beforeend", "<div id=\"".concat(type, "_").concat(x, "\" class=\"").concat(type, " ").concat(type, "_").concat(x, " mileaw_item\"><div id=\"").concat(type, "_label_").concat(x, "\" class=\"").concat(type, "_label\"></div></div>"));
             }
         }
@@ -5394,6 +5394,9 @@ var GameXBody = /** @class */ (function (_super) {
         }
         else if (key.startsWith("tracker_forest") || key.startsWith("tracker_land")) {
             txt += this.generateTooltipSection(_("Tiles on Mars"), _("Number of corresponding tiles played on Mars."));
+        }
+        else if (key.startsWith("tracker_pdeltav")) {
+            txt += this.generateTooltipSection(_("Venus requirements delta"), _("Your Venus requirements are +X or -X steps, your choice in each case."));
         }
         else if (key.startsWith("tracker_pdelta")) {
             txt += this.generateTooltipSection(_("Global parameters delta"), _("Your temperature, oxygen, and ocean requirements are +X or -X steps, your choice in each case."));
