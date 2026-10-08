@@ -628,6 +628,24 @@ final class VenusTest extends TestCase {
         $this->assertContains("lastforest", $types);
     }
 
+    public function testSoloPreludeWgtSkippedInGeneration12() {
+        // Prelude solo ends after 12 generations, Venus does not change that
+        $m = $this->soloGame();
+        $m->setGameStateValue("var_prelude", 1);
+        $this->assertEquals(12, $m->getLastGeneration());
+        $m->tokens->setTokenState("tracker_gen", 11);
+        $m->effect_endOfTurn();
+        $this->assertCount(1, $this->wgtOps($m));
+
+        $m = $this->soloGame();
+        $m->setGameStateValue("var_prelude", 1);
+        $m->tokens->setTokenState("tracker_gen", 12);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+    }
+
     public function testSoloWgtNotQueuedWhenAllMaxed() {
         $m = $this->soloGame();
         $m->tokens->setTokenState("tracker_gen", 5);
