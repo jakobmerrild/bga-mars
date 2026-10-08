@@ -5,13 +5,19 @@ declare(strict_types=1);
 // World Government Terraforming (Venus Next solar phase): raise one non-maxed global parameter, no TR and no bonuses
 class Operation_wgt extends AbsOperation {
     function argPrimaryDetails() {
-        $keys = ["tracker_t", "tracker_o", "tracker_w", "tracker_v"];
-        return $this->game->createArgInfo($this->color, $keys, function ($color, $tracker) {
+        // button labels make clear the active player chooses on behalf of the World Government
+        $names = [
+            "tracker_t" => clienttranslate("World Government: raise Temperature"),
+            "tracker_o" => clienttranslate("World Government: raise Oxygen"),
+            "tracker_w" => clienttranslate("World Government: raise Ocean"),
+            "tracker_v" => clienttranslate("World Government: raise Venus"),
+        ];
+        return $this->game->createArgInfo($this->color, array_keys($names), function ($color, $tracker) use ($names) {
             $max = $this->game->getRulesFor($tracker, "max", 0);
             if ($this->game->tokens->getTokenState($tracker) >= $max) {
-                return MA_ERR_MAXREACHED;
+                return ["q" => MA_ERR_MAXREACHED, "name" => $names[$tracker]];
             }
-            return MA_OK;
+            return ["q" => MA_OK, "name" => $names[$tracker]];
         });
     }
 

@@ -65,6 +65,7 @@ class GameXBody extends GameTokens {
       const mapnum = this.getMapNumber();
       this.setupHexes(mapnum);
       this.setupMilestonesAndAwards(mapnum);
+      this.setupVenus();
 
       super.setup(gamedatas);
       this.removeTooltip("map_hexes");
@@ -288,7 +289,9 @@ class GameXBody extends GameTokens {
     for (const type of list) {
       const mainnode = $(`display_${type}s`);
       for (let x = 1; this.gamedatas.token_types[`${type}_${x}`]; x++) {
-        mainnode.insertAdjacentHTML(
+        // Venus Next 6th milestone/award is a tile placed on top of the Milestones/Awards banner
+        const node = x > 5 ? $(`${type}s_extra`) : mainnode;
+        node.insertAdjacentHTML(
           "beforeend",
           `<div id="${type}_${x}" class="${type} ${type}_${x} mileaw_item"><div id="${type}_label_${x}" class="${type}_label"></div></div>`
         );
@@ -296,6 +299,18 @@ class GameXBody extends GameTokens {
     }
     //<div id="display_awards" class="mileaw_display">
     //<div id="award_1" class="award award_1"><div id="award_label_1" class="award_label">NA</div></div>
+  }
+
+  setupVenus() {
+    if (!this.isVenusExpansionEnabled()) return;
+    const scale = $("venus_scale");
+    const max = Number(this.getRulesFor("tracker_v", "max", 30));
+    for (let v = 0; v <= max; v += 2) {
+      const bonus = this.getRulesFor(`param_v_${v}`, "r", "");
+      const bonusHtml = bonus ? `<div class="venus_scale_bonus">${CustomRenders.parseActionsToHTML(bonus)}</div>` : "";
+      scale.insertAdjacentHTML("beforeend", `<div class="venus_scale_item" data-val="${v}">${v}${bonusHtml}</div>`);
+    }
+    $("venus_stanproj_title").innerHTML = _("Standard project");
   }
 
   setupHexes(mapnum: number) {
@@ -1445,6 +1460,18 @@ class GameXBody extends GameTokens {
           _(displayInfo.name),
           _("This global parameter (mean temperature at the equator) starts at -30 ˚C.")
         );
+      case "tracker_v":
+        return this.generateTooltipSection(
+          _(displayInfo.name),
+          this.format_string_recursive(
+            _(
+              "This global parameter starts with 0% and ends with ${max}%, in steps of 2%. Raising it gives 1 TR. Venus does not have to be completed for the game to end."
+            ),
+            {
+              max: this.getRulesFor("tracker_v", "max")
+            }
+          )
+        );
       case "starting_player":
         return this.generateTooltipSection(_(displayInfo.name), _("Shifts clockwise each generation."));
       case "tracker_tagEvent":
@@ -2029,6 +2056,9 @@ awarded.`);
           return this.customAnimation.animateMapItemAwareness("oxygen_map");
         }
       }
+      if (key == "tracker_v") {
+        return this.customAnimation.animateMapItemAwareness("venus_map");
+      }
       //ocean's pile
       if (key == "tracker_w") {
         return this.customAnimation.animateMapItemAwareness("oceans_pile");
@@ -2167,7 +2197,12 @@ awarded.`);
     }
 
     //check TM
-    if (node.id.startsWith("tracker_w") || node.id.startsWith("tracker_t") || node.id.startsWith("tracker_o")) {
+    if (
+      node.id.startsWith("tracker_w") ||
+      node.id.startsWith("tracker_t") ||
+      node.id.startsWith("tracker_o") ||
+      node.id.startsWith("tracker_v")
+    ) {
       this.checkTerraformingCompletion();
     }
   }
@@ -2289,6 +2324,9 @@ awarded.`);
       result.nop = true;
     } else if (tokenInfo.key.startsWith("milestone")) {
       result.nop = true;
+    } else if (tokenInfo.key == "card_stanproj_9" && tokenInfo.location == "display_main") {
+      // Air Scrapping is printed on the Venus board
+      result.location = "venus_stanproj";
     } else if (tokenInfo.key == "starting_player") {
       result.location = tokenInfo.location.replace("tableau_", "fpholder_");
     } else if (tokenInfo.key.startsWith("resource_")) {
@@ -3620,7 +3658,13 @@ awarded.`);
     const t_max = this.getRulesFor("tracker_t", "max");
     const w_max = this.getRulesFor("tracker_w", "max");
 
-    if (o >= o_max && t >= t_max && w >= w_max) {
+    let complete = o >= o_max && t >= t_max && w >= w_max;
+    // solo with Venus Next: Venus has to be completed too (multiplayer end of game ignores Venus)
+    if (complete && this.isVenusExpansionEnabled() && Object.keys(this.gamedatas.players).length == 1) {
+      complete = parseInt($("tracker_v").dataset.state) >= this.getRulesFor("tracker_v", "max");
+    }
+
+    if (complete) {
       const htm = '<div id="terraforming_complete" class="terraforming_complete">⚠️' + _("The terraforming is complete") + "</div>";
       if (!$("terraforming_complete")) $("game_play_area").insertAdjacentHTML("afterbegin", htm);
     } else {

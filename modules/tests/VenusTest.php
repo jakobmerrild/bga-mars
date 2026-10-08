@@ -534,6 +534,16 @@ final class VenusTest extends TestCase {
         $this->assertTrue($op->isVoid());
     }
 
+    public function testWgtButtonsNameWorldGovernment() {
+        $m = $this->venusGame();
+        $op = $m->getOperationInstanceFromType("wgt", PCOLOR);
+        $details = $op->argPrimaryDetails();
+        $this->assertEquals("World Government: raise Temperature", $details["tracker_t"]["name"]);
+        $this->assertEquals("World Government: raise Oxygen", $details["tracker_o"]["name"]);
+        $this->assertEquals("World Government: raise Ocean", $details["tracker_w"]["name"]);
+        $this->assertEquals("World Government: raise Venus", $details["tracker_v"]["name"]);
+    }
+
     public function testWgtFiresRaiseV() {
         $m = $this->venusGame();
         $m->setListeners([

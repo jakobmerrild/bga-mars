@@ -80,3 +80,13 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
 ## Out of scope
 
 Real card art and Venus board graphics.
+
+## As implemented
+
+- Venus board is a separate `#venus_board` next to `#main_board` (tpl, `src/css/Venus.scss`): scale, the four
+  city hexes and Air Scrapping (`card_stanproj_9` redirected to `venus_stanproj`). All Venus CSS is in
+  `Venus.scss`, imported last; CSS stand-ins for the Venus icon, tag, any-resource icon and card illustration.
+- Hoverlord / Venuphile are not in the milestone/award row: like the physical tiles they sit on the
+  Milestones / Awards banner (`#milestones_extra`, `#awards_extra`), per-map positions for Amazonis.
+- Venus cards show the generated card face in the digital layout too (no scans).
+- Not tested on BGA Studio yet - the manual checklist above is still open.

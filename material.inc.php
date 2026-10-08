@@ -7672,6 +7672,13 @@ $this->token_types = [
   'nc' => 1,
   'name' => clienttranslate('Microbe'),
 ],
+ 'resFloater' => [  //
+  'type' => 'tag',
+  'create' => 0,
+  'location' => 'params',
+  'nc' => 1,
+  'name' => clienttranslate('Floater'),
+],
 // #resource types without a tag of the same name, used in logs as tag<holds>
  'tagFloater' => [  //
   'type' => 'tag',

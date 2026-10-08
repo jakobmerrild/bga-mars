@@ -30,12 +30,6 @@
           <div class="hex outer" id="hex_0_1"></div>
           <div class="hex_phobos"><div class="hex outer" id="hex_0_2"></div></div>
           <div class="hex_ganymede"><div class="hex outer" id="hex_0_3"></div></div>
-          <div class="venus_cities">
-            <div class="hex outer" id="hex_0_4"></div>
-            <div class="hex outer" id="hex_0_5"></div>
-            <div class="hex outer" id="hex_0_6"></div>
-            <div class="hex outer" id="hex_0_7"></div>
-          </div>
    
           <div id="oxygen_map">
               <div id="alt_tracker_o" class="tracker param tracker_o"></div>
@@ -100,6 +94,7 @@
                 <div id="milestone_cost_3" class="token_img tracker_m">8</div>
               </div>
               <div id="milestones_title" class="mileaw_title">-Milestones-</div>
+              <div id="milestones_extra" class="mileaw_extra"></div>
               <div id="milestones_gains" class="mileaw_gains"><div id="milestone_vp_gain" class="card_vp">5</div></div>
               <div id="milestones_progress" class="mileaw_progress" ><i class="fa fa-tasks" aria-hidden="true"></i></div>
             </div>
@@ -114,6 +109,7 @@
                 <div id="award_cost_3" class="token_img tracker_m">20</div>
               </div>
               <div id="awards_title" class="mileaw_title">-Awards-</div>
+              <div id="awards_extra" class="mileaw_extra"></div>
               <div id="awards_gains" class="mileaw_gains">
                 <div id="milestone_award_gain_1" class="card_vp">5</div>
                 <div id="milestone_award_gain_2" class="card_vp">2</div>
@@ -123,6 +119,23 @@
             <div id="display_awards" class="mileaw_display display_awards">
             </div>
           </div>
+        </div>
+      </div>
+      <!-- Venus Next board, shown only with the expansion (.exp-venus). Stand-in graphics, no art yet -->
+      <div id="venus_board" class="venus_board">
+        <div class="venus_planet"></div>
+        <div id="venus_map" class="venus_map">
+          <div id="venus_scale" class="venus_scale"></div>
+          <div id="alt_tracker_v" class="tracker param tracker_v"></div>
+        </div>
+        <div class="venus_cities">
+          <div class="hex outer" id="hex_0_4"></div>
+          <div class="hex outer" id="hex_0_5"></div>
+          <div class="hex outer" id="hex_0_6"></div>
+          <div class="hex outer" id="hex_0_7"></div>
+        </div>
+        <div id="venus_stanproj" class="venus_stanproj">
+          <div id="venus_stanproj_title" class="venus_stanproj_title"></div>
         </div>
       </div>
       <div id="display_colonies" class="display_colonies" data-mode="grid">
@@ -245,6 +258,7 @@
               <div id="tracker_tagMicrobe_{PLAYER_COLOR}" class="tracker badge t tracker_tagMicrobe"></div>
               <div id="tracker_tagAnimal_{PLAYER_COLOR}" class="tracker badge tracker_tagAnimal"></div>
 
+              <div id="tracker_tagVenus_{PLAYER_COLOR}" class="tracker badge tracker_tagVenus"></div>
               <div id="tracker_tagWild_{PLAYER_COLOR}" class="tracker badge tracker_tagWild"></div>
 
               <div id="tracker_tagEvent_{PLAYER_COLOR}" class="tracker badge tracker_tagEvent"></div>
@@ -375,6 +389,7 @@
           <div id="alt_tracker_tagPlant_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagPlant"></div>
           <div id="alt_tracker_tagMicrobe_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagMicrobe"></div>
           <div id="alt_tracker_tagAnimal_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagAnimal"></div>
+          <div id="alt_tracker_tagVenus_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagVenus"></div>
           <div id="alt_tracker_tagWild_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagWild"></div>
           <div id="alt_tracker_tagEvent_{PLAYER_COLOR}" class="mini_counter tracker badge tracker_tagEvent"></div>
           <!-- non tag counters -->
@@ -475,6 +490,13 @@
           <div  class="token_img tracker_w"></div>
           <div class="groupline">
             <div id="tracker_w" class="tracker param"></div>
+          </div>
+        </div>
+        <div id="tracker_v_param" class="params_line">
+          <div class="token_img venus_icon"></div>
+          <div class="groupline">
+            <div id="tracker_v" class="tracker param"></div>
+            %
           </div>
         </div>
         <div id="tracker_gen_param" class="params_line">
