@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 class Operation_o extends AbsOperation {
     function effect(string $owner, int $inc): int {
-        $this->game->effect_increaseParam($owner, $this->mnemonic, $inc);
+        // (wgt) param: World Government Terraforming, no TR and no bonuses
+        $options = $this->params() == "wgt" ? ["wgt" => true] : [];
+        $this->game->effect_increaseParam($owner, $this->mnemonic, $inc, 1, $options);
         return $inc;
     }
 

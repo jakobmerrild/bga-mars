@@ -7229,6 +7229,11 @@ $this->token_types = [
   'type' => 'v',
   'name' => clienttranslate('Raise Venus'),
 ],
+ 'op_wgt' => [  //
+  'type' => 'wgt',
+  'name' => clienttranslate('World Government Terraforming'),
+  'prompt' => clienttranslate('${you} must choose a global parameter for the World Government to raise'),
+],
  'op_tr' => [  //
   'type' => 'tr',
   'name' => clienttranslate('Increase TR'),
@@ -7254,6 +7259,10 @@ $this->token_types = [
  'op_finalscoring' => [  //
   'type' => 'finalscoring',
   'name' => clienttranslate('Final Scoring'),
+],
+ 'op_coloprod' => [  //
+  'type' => 'coloprod',
+  'name' => clienttranslate('Colony Production'),
 ],
  'op_cardx' => [  //
   'type' => 'cardx',
