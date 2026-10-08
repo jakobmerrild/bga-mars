@@ -1281,4 +1281,172 @@ final class VenusTest extends TestCase {
         $this->assertEquals($pp + 1, $m->getTrackerValue(PCOLOR, "pp"));
         $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
     }
+
+    // Step 8C: cards with special rules
+
+    private function topOp(GameUT $m, string $color = PCOLOR) {
+        $tops = $m->machine->getTopOperations($color);
+        return reset($tops);
+    }
+
+    private function playAndDispatch(GameUT $m, string $card, string $color = PCOLOR) {
+        $m->effect_playCard($color, $card);
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+    }
+
+    private function resolveTop(GameUT $m, $target = null, string $color = PCOLOR) {
+        $op = $this->topOp($m, $color);
+        $this->assertNotFalse($op, "no pending operation");
+        $m->fakeUserAction($op, $target);
+        $m->st_gameDispatch();
+    }
+
+    private function handCount(GameUT $m, string $color): int {
+        return count($m->tokens->getTokensInLocation("hand_$color"));
+    }
+
+    private function addResources(GameUT $m, string $card, int $count, string $color = PCOLOR) {
+        for ($i = 0; $i < $count; $i++) {
+            $res = $m->createPlayerResource($color);
+            $m->dbSetTokenLocation($res, $card, 0);
+        }
+    }
+
+    private function paymentTargets(GameUT $m, string $card, string $color = PCOLOR): array {
+        $payment = $m->getPayment($color, $card);
+        $args = $m->debug_opInfo($payment, $card);
+        return $args["args"]["target"];
+    }
+
+    public function testCometForVenusTargetsOnlyVenusTagPlayers() {
+        $m = $this->venusGame();
+        $comet = "card_main_218";
+        $m->setTrackerValue(BCOLOR, "m", 3);
+        $op = $m->getOperationInstanceFromType("nm_Any(Venus)", PCOLOR, 1, $comet);
+        $info = $op->argPrimaryDetails();
+        $this->assertNotEquals(MA_OK, $info[BCOLOR]["q"]);
+
+        $m->tokens->setTokenState("tracker_tagVenus_" . BCOLOR, 1);
+        $op = $m->getOperationInstanceFromType("nm_Any(Venus)", PCOLOR, 1, $comet);
+        $info = $op->argPrimaryDetails();
+        $this->assertEquals(MA_OK, $info[BCOLOR]["q"]);
+
+        $v = $m->tokens->getTokenState("tracker_v");
+        $this->playAndDispatch($m, $comet);
+        $this->assertEquals($v + 2, $m->tokens->getTokenState("tracker_v"));
+        $this->resolveTop($m, BCOLOR);
+        $this->assertEquals(0, $m->getTrackerValue(BCOLOR, "m"));
+    }
+
+    public function testCometForVenusEventTagDoesNotCount() {
+        $m = $this->venusGame();
+        // a played Venus event (GHG Import From Venus) leaves no Venus tag in play
+        $m->effect_playCard(BCOLOR, "card_main_228");
+        $m->setTrackerValue(BCOLOR, "m", 5);
+        $op = $m->getOperationInstanceFromType("nm_Any(Venus)", PCOLOR, 1, "card_main_218");
+        $info = $op->argPrimaryDetails();
+        $this->assertNotEquals(MA_OK, $info[BCOLOR]["q"]);
+    }
+
+    public function testDirigiblesPayVenusCard() {
+        $m = $this->venusGame();
+        $dirigibles = "card_main_222";
+        $this->assertEquals("ores(Floater)", $m->getRulesFor($dirigibles, "a"));
+        $m->effect_playCard(PCOLOR, $dirigibles);
+        $this->addResources($m, $dirigibles, 2);
+        $m->setTrackerValue(PCOLOR, "m", 30);
+
+        $card = "card_main_223"; // Extractor Balloons, Venus, 21
+        $this->assertContains("2resFloater15m", $this->paymentTargets($m, $card));
+
+        $targets = $this->paymentTargets($m, "card_main_232"); // Io Sulphur Research, no Venus tag
+        foreach ($targets as $target) {
+            $this->assertStringNotContainsString("resFloater", $target);
+        }
+
+        $m->push(PCOLOR, $m->getPayment(PCOLOR, $card), $card);
+        $this->resolveTop($m, "2resFloater15m");
+        $this->assertEquals(0, $m->tokens->countTokensInLocation($dirigibles));
+        $this->assertEquals(15, $m->getTrackerValue(PCOLOR, "m"));
+    }
+
+    public function testVenusWaystationDiscount() {
+        $m = $this->venusGame();
+        $this->assertEquals("21nm", $m->getPayment(PCOLOR, "card_main_223")); // Extractor Balloons
+        $m->effect_playCard(PCOLOR, "card_main_258");
+        $this->assertEquals("19nm", $m->getPayment(PCOLOR, "card_main_223"));
+        $this->assertEquals("17nm", $m->getPayment(PCOLOR, "card_main_232")); // Io Sulphur Research
+    }
+
+    public function testVenusianAnimalsScienceTrigger() {
+        $m = $this->venusGame();
+        $animals = "card_main_259";
+        $this->playAndDispatch($m, $animals);
+        $this->assertEquals(1, $m->tokens->countTokensInLocation($animals));
+        $this->playAndDispatch($m, $m->mtFindByName("Physics Complex")); // one Science tag
+        $this->resolveTop($m); // confirm adding the animal
+        $this->assertEquals(2, $m->tokens->countTokensInLocation($animals));
+        $this->playAndDispatch($m, "card_main_233"); // Ishtar Mining, no Science tag
+        $this->assertEquals(2, $m->tokens->countTokensInLocation($animals));
+    }
+
+    public function testSponsoredAcademiesOpponentsDraw() {
+        $m = $this->venusGame();
+        $academies = "card_main_247";
+        $m->dbSetTokenLocation($academies, "hand_" . PCOLOR, 0);
+        $m->dbSetTokenLocation("card_main_1", "hand_" . PCOLOR, 0);
+        $m->dbSetTokenLocation("card_main_2", "hand_" . PCOLOR, 0);
+        $bhand = $this->handCount($m, BCOLOR);
+        $m->setTrackerValue(PCOLOR, "m", 20);
+        $this->assertEquals(MA_OK, $m->playability(PCOLOR, $academies));
+
+        $this->playAndDispatch($m, $academies);
+        $this->resolveTop($m, "card_main_1"); // discard
+        for ($i = 0; $i < 5 && $this->topOp($m); $i++) {
+            $this->resolveTop($m); // confirmations
+        }
+        $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_1"));
+        $this->assertEquals(4, $this->handCount($m, PCOLOR)); // card_main_2 + 3 drawn
+        $this->assertEquals($bhand + 1, $this->handCount($m, BCOLOR));
+    }
+
+    public function testSponsoredAcademiesNeedsCardToDiscard() {
+        $m = $this->venusGame();
+        $academies = "card_main_247";
+        $m->dbSetTokenLocation($academies, "hand_" . PCOLOR, 0);
+        $m->setTrackerValue(PCOLOR, "m", 20);
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $m->playability(PCOLOR, $academies));
+        $m->dbSetTokenLocation("card_main_1", "hand_" . PCOLOR, 0);
+        $this->assertEquals(MA_OK, $m->playability(PCOLOR, $academies));
+    }
+
+    public function testIoSulphurResearchDraw1Or3() {
+        foreach ([2 => 1, 3 => 3] as $tags => $draw) {
+            $m = $this->venusGame();
+            $m->tokens->setTokenState("tracker_tagVenus_" . PCOLOR, $tags);
+            $hand = $this->handCount($m, PCOLOR);
+            $this->playAndDispatch($m, "card_main_232");
+            for ($i = 0; $i < 3 && $this->topOp($m); $i++) {
+                $this->resolveTop($m); // draw confirmation
+            }
+            $this->assertEquals($hand + $draw, $this->handCount($m, PCOLOR), "$tags Venus tags");
+        }
+    }
+
+    public function testVenusMagnetizer() {
+        $m = $this->venusGame();
+        $card = "card_main_256";
+        $a = $m->getRulesFor($card, "a");
+        $this->assertTrue($m->isVoidSingle($a, PCOLOR, 1, $card));
+        $m->setTrackerValue(PCOLOR, "pe", 1);
+        $this->assertFalse($m->isVoidSingle($a, PCOLOR, 1, $card));
+
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $m->push(PCOLOR, $a, "$card:a");
+        $m->st_gameDispatch();
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "pe"));
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
+    }
 }

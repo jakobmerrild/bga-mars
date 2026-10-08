@@ -5,6 +5,7 @@ declare(strict_types=1);
 /**
  * Remove any player standard resource R one of m, s, p, etc
  * This is up to and optional
+ * Optional param is a tag the target player must have in play, i.e. nm_Any(Venus)
  */
 class Operation_nR_Any extends AbsOperation {
     protected function getPrompt() {
@@ -30,6 +31,7 @@ class Operation_nR_Any extends AbsOperation {
         return $this->game->createArgInfo($this->color, $keys, function ($color, $other_player_color) use ($protected, $type) {
             if ($other_player_color === 'none') return 0;
             if (array_get($protected, $other_player_color))  return ['q' => MA_ERR_PROTECTED, 'protected' => 1];
+            if (!$this->hasRequiredTag($other_player_color)) return ['q' => MA_ERR_NOTAPPLICABLE];
             $value = $this->game->getTrackerValue($other_player_color, $type);
             if ($value == 0) return ['q' => MA_ERR_NOTAPPLICABLE, 'max' => $value];
             return ['q' => MA_OK, 'max' => $value];
@@ -64,6 +66,16 @@ class Operation_nR_Any extends AbsOperation {
     }
 
 
+    protected function getRequiredTag() {
+        return $this->params();
+    }
+
+    protected function hasRequiredTag(string $color): bool {
+        $tag = $this->getRequiredTag();
+        if (!$tag) return true;
+        return $this->game->getTrackerValue($color, "tag$tag") > 0;
+    }
+
     protected function getType() {
         return substr($this->mnemonic, 1, 1); // XXX
     }
@@ -71,6 +83,7 @@ class Operation_nR_Any extends AbsOperation {
     function effect(string $owner, int $inc): int {
         $type = $this->getType();
         if ($this->game->isSolo()) {
+            if ($this->getRequiredTag()) return $inc; // neutral opponent has no tags
             $message = clienttranslate('${player_name} removes ${mod} ${token_name} from neutral opponent');
             $this->game->notifyMessageWithTokenName($message, $this->game->getTrackerId($owner, $type), $owner, ['mod' => $inc]);
             return $inc;
