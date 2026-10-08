@@ -2884,9 +2884,9 @@ var CustomRenders = /** @class */ (function () {
                 var content = item.content != undefined ? item.content : "";
                 if (optional_content)
                     content = optional_content;
-                var after_1 = item.after != undefined ? item.after : "";
+                var after = item.after != undefined ? item.after : "";
                 if (item.production === true) {
-                    finds[idx] = '<div class="outer_production"><div class="' + item.classes + '">' + content + "</div>" + after_1 + "</div>";
+                    finds[idx] = '<div class="outer_production"><div class="' + item.classes + '">' + content + "</div>" + after + "</div>";
                 }
                 else if (item.redborder) {
                     finds[idx] =
@@ -2897,11 +2897,11 @@ var CustomRenders = /** @class */ (function () {
                             '">' +
                             content +
                             "</div>" +
-                            after_1 +
+                            after +
                             "</div>";
                 }
                 else {
-                    finds[idx] = '<div class="' + item.classes + '">' + content + "</div>" + after_1;
+                    finds[idx] = '<div class="' + item.classes + '">' + content + "</div>" + after;
                 }
                 idx++;
             }
@@ -4337,6 +4337,9 @@ var GameXBody = /** @class */ (function (_super) {
             if (this.isColoniesExpansionEnabled()) {
                 $("ebd-body").classList.add("exp-colonies");
             }
+            if (this.isVenusExpansionEnabled()) {
+                $("ebd-body").classList.add("exp-venus");
+            }
             // debug buttons studio only
             var parent = document.querySelector(".debug_section");
             if (parent) {
@@ -4934,6 +4937,10 @@ var GameXBody = /** @class */ (function (_super) {
     GameXBody.prototype.isColoniesExpansionEnabled = function () {
         var _a, _b;
         return ((_b = (_a = this.gamedatas.table_options["108"]) === null || _a === void 0 ? void 0 : _a.value) !== null && _b !== void 0 ? _b : 0) > 0;
+    };
+    GameXBody.prototype.isVenusExpansionEnabled = function () {
+        var _a, _b;
+        return ((_b = (_a = this.gamedatas.table_options["111"]) === null || _a === void 0 ? void 0 : _a.value) !== null && _b !== void 0 ? _b : 0) > 0;
     };
     GameXBody.prototype.isLiveScoringOn = function () {
         if (this.isLiveScoringDisabled())

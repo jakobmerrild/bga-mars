@@ -30,6 +30,12 @@
           <div class="hex outer" id="hex_0_1"></div>
           <div class="hex_phobos"><div class="hex outer" id="hex_0_2"></div></div>
           <div class="hex_ganymede"><div class="hex outer" id="hex_0_3"></div></div>
+          <div class="venus_cities">
+            <div class="hex outer" id="hex_0_4"></div>
+            <div class="hex outer" id="hex_0_5"></div>
+            <div class="hex outer" id="hex_0_6"></div>
+            <div class="hex outer" id="hex_0_7"></div>
+          </div>
    
           <div id="oxygen_map">
               <div id="alt_tracker_o" class="tracker param tracker_o"></div>

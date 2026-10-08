@@ -884,6 +884,15 @@ abstract class PGameXBody extends PGameMachine {
         $num = $this->getPlayersNumber();
         $this->doAdjustMaterial($num, $adj);
 
+        if (!$this->isVenusVariant()) {
+            // off-Mars Venus city areas only exist with Venus Next
+            foreach ($this->token_types as $key => $info) {
+                if (startsWith($key, "hex_") && array_get($info, "venus")) {
+                    unset($this->token_types[$key]);
+                }
+            }
+        }
+
         $expr_keys = ["r", "e", "a"];
         foreach ($this->token_types as $key => &$info) {
             if (startsWith($key, "card_") || startsWith($key, "hex_")) {

@@ -10,6 +10,12 @@ x|y|r|name|ocean|php
 0|1||Stanford Torus
 0|2||Phobos Space Haven
 0|3||Ganymede Colony
+#set venus=1
+0|4||Dawn City
+0|5||Luna Metropolis
+0|6||Maxwell Base
+0|7||Stratopolis
+#set venus=
 #set inspace=
 3|5|2p|Noctis City
 4|1|2s||1
@@ -82,6 +88,12 @@ x|y|r|name|ocean|php
 0|1||Stanford Torus
 0|2||Phobos Space Haven
 0|3||Ganymede Colony
+#set venus=1
+0|4||Dawn City
+0|5||Luna Metropolis
+0|6||Maxwell Base
+0|7||Stratopolis
+#set venus=
 #set inspace=
 #set reserved=
 3|1|2p||1
@@ -164,6 +176,12 @@ x|y|r|name|ocean|php
 0|1||Stanford Torus
 0|2||Phobos Space Haven
 0|3||Ganymede Colony
+#set venus=1
+0|4||Dawn City
+0|5||Luna Metropolis
+0|6||Maxwell Base
+0|7||Stratopolis
+#set venus=
 #set inspace=
 #set reserved=
 3|1|||1
@@ -245,6 +263,12 @@ x|y|r|name|ocean|php
 0|1||Stanford Torus
 0|2||Phobos Space Haven
 0|3||Ganymede Colony
+#set venus=1
+0|4||Dawn City
+0|5||Luna Metropolis
+0|6||Maxwell Base
+0|7||Stratopolis
+#set venus=
 #set inspace=
 #set reserved=
 3|1|p
@@ -330,6 +354,12 @@ x|y|r|name|ocean|php
 0|1||Stanford Torus
 0|2||Phobos Space Haven
 0|3||Ganymede Colony
+#set venus=1
+0|4||Dawn City
+0|5||Luna Metropolis
+0|6||Maxwell Base
+0|7||Stratopolis
+#set venus=
 #set inspace=
 #set reserved=
 3|1|s

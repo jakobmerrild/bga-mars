@@ -6506,6 +6506,24 @@
   background-size: contain;
 }
 
+/* Venus Next off-Mars city areas: Dawn City, Luna Metropolis, Maxwell Base, Stratopolis.
+   Placeholder layout, final Venus board graphics are step 10. */
+.venus_cities {
+  display: none;
+  position: absolute;
+  left: 1%;
+  top: 55%;
+  flex-direction: column;
+  gap: calc(var(--hex-width) * 0.1);
+}
+.exp-venus .venus_cities {
+  display: flex;
+}
+.venus_cities .hex {
+  position: relative;
+  background-color: rgba(230, 170, 60, 0.35);
+}
+
 .hex:hover {
   background-color: rgba(255, 255, 0, 0.4);
 }
@@ -10951,6 +10969,10 @@
 .mfull .map_4 .hex_ganymede {
   left: 5.5%;
   top: 80.5%;
+}
+.mfull .venus_cities {
+  left: 1%;
+  top: 55%;
 }
 .mfull #oceans_pile {
   position: absolute;

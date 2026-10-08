@@ -1221,7 +1221,8 @@ final class GameTest extends TestCase {
     }
 
     public function testInstanciateAllCard() {
-        $this->game = $m = $this->game();
+        // Venus on: Venus cards target Venus-only hexes (e.g. city('Stratopolis'))
+        $this->game = $m = (new GameUT())->init(0, 0, 1);
         foreach ($m->token_types as $key => $info) {
             $info["key"] = $key;
             if (array_get($info, "t", 0) == 0) {

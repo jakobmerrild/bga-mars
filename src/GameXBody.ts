@@ -196,6 +196,9 @@ class GameXBody extends GameTokens {
       if (this.isColoniesExpansionEnabled()) {
         $("ebd-body").classList.add("exp-colonies");
       }
+      if (this.isVenusExpansionEnabled()) {
+        $("ebd-body").classList.add("exp-venus");
+      }
 
       // debug buttons studio only
       var parent = document.querySelector(".debug_section");
@@ -922,6 +925,10 @@ class GameXBody extends GameTokens {
 
   isColoniesExpansionEnabled() {
     return (this.gamedatas.table_options["108"]?.value ?? 0) > 0;
+  }
+
+  isVenusExpansionEnabled() {
+    return (this.gamedatas.table_options["111"]?.value ?? 0) > 0;
   }
 
   isLiveScoringOn() {

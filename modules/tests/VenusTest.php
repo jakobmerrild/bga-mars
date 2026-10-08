@@ -69,4 +69,96 @@ final class VenusTest extends TestCase {
             $this->assertEquals(implode(" ", $corp["tags"]), $m->getRulesFor($id, "tags", ""), $id);
         }
     }
+
+    // Step 7 - off-Mars Venus city areas
+
+    const VENUS_CITY_HEXES = [
+        "hex_0_4" => "Dawn City",
+        "hex_0_5" => "Luna Metropolis",
+        "hex_0_6" => "Maxwell Base",
+        "hex_0_7" => "Stratopolis",
+    ];
+
+    private function placeCity(GameUT $m, string $optype, string $hex, string $color = PCOLOR) {
+        $m->push($color, $optype);
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $m->fakeUserAction($op, $hex);
+        $m->st_gameDispatch();
+        $m->clean_cache();
+    }
+
+    public function testVenusCityHexesOnlyWithVenus() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 1);
+            foreach (self::VENUS_CITY_HEXES as $hex => $name) {
+                $this->assertEquals($name, $m->getRulesFor($hex, "name", null), "map $map $hex");
+                $this->assertEquals(1, $m->getRulesFor($hex, "inspace"), "map $map $hex");
+                $this->assertEquals(1, $m->getRulesFor($hex, "reserved"), "map $map $hex");
+            }
+            $m = (new GameUT())->init($map, 0, 0);
+            $planet = $m->getPlanetMap(false);
+            foreach (self::VENUS_CITY_HEXES as $hex => $name) {
+                $this->assertArrayNotHasKey($hex, $planet, "map $map $hex");
+            }
+            $this->assertArrayHasKey("hex_0_3", $planet, "map $map");
+        }
+    }
+
+    public function testVenusCityCardRulesParse() {
+        $m = (new GameUT())->init(0, 0, 1);
+        foreach ([220, 236, 238, 248] as $num) {
+            $r = $m->getRulesFor("card_main_$num", "r");
+            $this->assertNotEmpty(OpExpression::arr($r), "card_main_$num");
+        }
+    }
+
+    public function testDawnCityPlacesOnReservedArea() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $op = $m->getOperationInstanceFromType("city('Dawn City')", PCOLOR);
+        $targets = [];
+        foreach ($op->argPrimaryDetails() as $hex => $info) {
+            if ($info["q"] == MA_OK) {
+                $targets[] = $hex;
+            }
+        }
+        $this->assertEquals(["hex_0_4"], $targets);
+    }
+
+    public function testVenusCityHexNotOfferedToNormalCity() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $details = $m->getOperationInstanceFromType("city", PCOLOR)->argPrimaryDetails();
+        foreach (self::VENUS_CITY_HEXES as $hex => $name) {
+            $this->assertNotEquals(MA_OK, $details[$hex]["q"] ?? MA_ERR_RESERVED, $hex);
+        }
+    }
+
+    public function testVenusCityCountsAsCityNotOnMars() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $this->placeCity($m, "city('Stratopolis')", "hex_0_7");
+        $this->assertEquals(PCOLOR, $m->getPlanetMap()["hex_0_7"]["owner"]);
+        $this->assertEquals(1, $m->getTrackerValue(PCOLOR, "city"));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "cityonmars"));
+        $this->assertEquals(0, $m->evaluateExpression("cityonmars", PCOLOR));
+    }
+
+    public function testTharsisRepublicVenusCity() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->dbSetTokenLocation("card_corp_11", "tableau_" . PCOLOR, MA_CARD_STATE_ACTION_UNUSED);
+        $m->clearEventListenerCache();
+        $this->placeCity($m, "city('Luna Metropolis')", "hex_0_5");
+        $this->assertEquals(3, $m->getTrackerValue(PCOLOR, "m"));
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "pm"));
+    }
+
+    public function testOnMarsCountersIgnoreVenusCities() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $this->placeCity($m, "city('Stratopolis')", "hex_0_7");
+        $this->placeCity($m, "city", "hex_4_3", BCOLOR);
+        $this->assertEquals(1, $m->getTrackerValue(BCOLOR, "cityonmars"));
+        // Zeppelins / Martian Rails
+        $this->assertEquals(1, $m->evaluateExpression("all_cityonmars", PCOLOR));
+        // Greenhouses / Energy Saving: city tiles in play
+        $this->assertEquals(2, $m->evaluateExpression("all_city", PCOLOR));
+    }
 }
