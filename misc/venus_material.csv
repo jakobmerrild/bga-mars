@@ -71,3 +71,11 @@ num|name|t|r|a|e|cost|pre|tags|vp|deck|text|text_action|text_effect|text_vp|php
 16|Manutech|4|ps|||-35||Building|0|Venus|You start with 1 steel production and 35 M€.||For each step you increase the production of a resource, including this, you also gain that resource.||
 17|Morning Star Inc.|4||||-50||Venus|0|Venus|You start with 50 M€. As your first action, reveal cards from the deck until you have revealed 3 Venus-tag cards. Take those into hand and discard the rest.||Your Venus requirements are +/- 2 steps, your choice in each case.||
 18|Viron|4||||-48||Microbe|0|Venus|You start with 48 M€.|Use a blue card action that has already been used this generation.|||
+
+#standard project
+#set id=card_stanproj_{num}
+#set location=display_main
+#set count=1
+#set create=1
+#set type=stanproj
+9|Air Scrapping|0|v|||15||||Venus|For 15 M€ you get to increase Venus 1 step (and your TR)

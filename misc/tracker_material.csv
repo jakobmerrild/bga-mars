@@ -43,6 +43,7 @@ starting_player|First Player Marker
 tracker_o|Oxygen Level|0|'max'=>14
 tracker_t|Temperature|-30|'max'=>8,'min'=>-30
 tracker_w|Oceans|0|'max'=>9
+tracker_v|Venus|0|'max'=>30
 tracker_gen|Generations|1|'min'=>1
 
 

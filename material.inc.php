@@ -165,6 +165,16 @@ $this->token_types = [
         "param" => "t",
         "value" => -12,
     ],
+    "param_v_8" => [
+        "r" => "draw",
+        "param" => "v",
+        "value" => 8,
+    ],
+    "param_v_16" => [
+        "r" => "tr",
+        "param" => "v",
+        "value" => 16,
+    ],
     /* --- gen php begin cards_material --- */
 // #project cards
  'card_main_1' => [  //
@@ -5854,6 +5864,20 @@ $this->token_types = [
   'text' => clienttranslate('You start with 48 M€.'),
   'text_action' => clienttranslate('Use a blue card action that has already been used this generation.'),
 ],
+// #standard project
+ 'card_stanproj_9' => [  //
+  'location' => 'display_main',
+  'create' => 1,
+  'type' => 'stanproj',
+  'count' => 1,
+  'num' => 9,
+  'name' => clienttranslate('Air Scrapping'),
+  't' => 0,
+  'r' => 'v',
+  'cost' => 15,
+  'deck' => 'Venus',
+  'text' => clienttranslate('For 15 M€ you get to increase Venus 1 step (and your TR)'),
+],
     /* --- gen php end venus_material --- */
 
     /* --- gen php begin proj_material --- */
@@ -7150,6 +7174,10 @@ $this->token_types = [
   'type' => 't',
   'name' => clienttranslate('Increase Temperature'),
 ],
+ 'op_v' => [  //
+  'type' => 'v',
+  'name' => clienttranslate('Raise Venus'),
+],
  'op_tr' => [  //
   'type' => 'tr',
   'name' => clienttranslate('Increase TR'),
@@ -7394,6 +7422,14 @@ $this->token_types = [
   'name' => clienttranslate('Oceans'),
   'state' => 0,
   'max'=>9,
+],
+ 'tracker_v' => [  //
+  'type' => 'param',
+  'create' => 1,
+  'location' => 'params',
+  'name' => clienttranslate('Venus'),
+  'state' => 0,
+  'max'=>30,
 ],
  'tracker_gen' => [  //
   'type' => 'param',
