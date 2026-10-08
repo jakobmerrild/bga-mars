@@ -77,9 +77,11 @@ class Operation_w extends AbsOperationTile {
             return 1; // skip placing tile
         }
 
-        $this->game->effect_increaseParam($owner, "w", 1);
+        // w(wgt): World Government Terraforming, no TR and no placement bonuses
+        $options = $this->params() == "wgt" ? ["wgt" => true] : [];
+        $this->game->effect_increaseParam($owner, "w", 1, 1, $options);
 
-        $tile = $this->effect_placeTile();
+        $tile = $this->effect_placeTile($options);
         $this->game->triggerEffect($owner, "place_ocean", $tile);
 
         //special handling card_main_188 Flooding

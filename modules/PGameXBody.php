@@ -1869,6 +1869,25 @@ abstract class PGameXBody extends PGameMachine {
         return $this->getTerraformingProgression() >= 100;
     }
 
+    /** Solo standard flavour goal: Mars terraformed, and with Venus Next also Venus at max */
+    function isSoloTerraformingComplete() {
+        if ($this->getTerraformingProgression() < 100) {
+            return false;
+        }
+        if ($this->isVenusVariant()) {
+            return $this->tokens->getTokenState("tracker_v") >= $this->getRulesFor("tracker_v", "max");
+        }
+        return true;
+    }
+
+    function isSoloGoalAchieved(string $color) {
+        if ($this->getGameStateValue("var_solo_flavour") == 1) {
+            // TR63
+            return $this->getTrackerValue($color, "tr") >= 63;
+        }
+        return $this->isSoloTerraformingComplete();
+    }
+
     function getLastGeneration() {
         $maxgen = $this->getRulesFor("solo", "gen");
         if ($this->isPreludeVariant()) {
@@ -2087,7 +2106,7 @@ abstract class PGameXBody extends PGameMachine {
         }
     }
 
-    function effect_placeTile(string $color, $object, $target) {
+    function effect_placeTile(string $color, $object, $target, array $options = []) {
         $this->systemAssertTrue("Invalid tile", $object);
         $this->systemAssertTrue("Invalid target", $target);
         $this->systemAssertTrue("Invalid tile, does not exists $object", $this->tokens->getTokenInfo($object));
@@ -2122,6 +2141,11 @@ abstract class PGameXBody extends PGameMachine {
         // notif
         $tile = $object;
         $this->triggerEffect($color, "place_tile", $tile);
+        if (array_get($options, "wgt", false)) {
+            // World Government Terraforming gives no placement bonuses
+            $this->notifyScoringUpdate();
+            return $object;
+        }
 
         // hex bonus
         $bonus = $this->getRulesFor($target, "r");
@@ -2355,8 +2379,13 @@ abstract class PGameXBody extends PGameMachine {
                 return false;
             }
         }
+        $wgt = array_get($options, "wgt", false);
         $value = $this->tokens->setTokenState($token_id, $current + $inc);
-        $message = clienttranslate('${player_name} increases ${token_name} by ${steps} step/s to a value of ${counter_value}');
+        if ($wgt) {
+            $message = clienttranslate('World Government raises ${token_name} by ${steps} step/s to a value of ${counter_value}');
+        } else {
+            $message = clienttranslate('${player_name} increases ${token_name} by ${steps} step/s to a value of ${counter_value}');
+        }
         $this->notifyCounterDirect(
             $token_id,
             $value,
@@ -2373,8 +2402,8 @@ abstract class PGameXBody extends PGameMachine {
                 "_notifType" => "message_warning",
             ]);
         }
-        // check bonus
-        for ($i = $perstep; $i <= $inc; $i += $perstep) {
+        // check bonus, World Government Terraforming gives no bonuses
+        for ($i = $perstep; !$wgt && $i <= $inc; $i += $perstep) {
             $v = $current + $i;
             $nvalue = $v >= 0 ? $v : "n" . -$v;
             $bounus_name = "param_{$type}_{$nvalue}";
@@ -2392,7 +2421,9 @@ abstract class PGameXBody extends PGameMachine {
             }
         }
 
-        $this->effect_incTerraformingRank($color, $steps, ["reason_tr" => $this->getReason("op_$type")]);
+        if (!$wgt) {
+            $this->effect_incTerraformingRank($color, $steps, ["reason_tr" => $this->getReason("op_$type")]);
+        }
         if ($this->getTerraformingProgression() >= 100) {
             $this->notifyWithName("message_warning", clienttranslate("The terraforming is complete!!!"));
         }
@@ -2606,10 +2637,21 @@ abstract class PGameXBody extends PGameMachine {
             }
             return null;
         }
-        // step 2: world goverment: venus only
-        // step 3: colony production
-        $this->effect_colonyProduction();
         $current_player_id = $this->getCurrentStartingPlayer();
+        // step 2: world goverment: venus only, first player of the generation that just ended chooses
+        // step 3: colony production
+        if ($this->isVenusVariant()) {
+            $color = $this->custom_getPlayerColorById($current_player_id);
+            if (!$this->isVoidSingle("wgt", $color)) {
+                // void when all four parameters are maxed (possible in solo)
+                $this->machine->queue("wgt", 1, 1, $color);
+            }
+            if ($this->isColoniesVariant()) {
+                $this->machine->queue("coloprod", 1, 1, $color); // has to wait for wgt choice
+            }
+        } else {
+            $this->effect_colonyProduction();
+        }
         $player_id = $this->getPlayerAfter($current_player_id);
         $this->setCurrentStartingPlayer($player_id);
         $this->machine->queue("research", 1, 1, $this->custom_getPlayerColorById($player_id));
@@ -2663,7 +2705,6 @@ abstract class PGameXBody extends PGameMachine {
 
         if ($this->isSolo()) {
             $color = $this->custom_getPlayerColorById($player_id);
-            $win = false;
             $maxgen = $this->getLastGeneration();
             if ($this->getGameStateValue("var_solo_flavour") == 1) {
                 // TR63
@@ -2673,18 +2714,19 @@ abstract class PGameXBody extends PGameMachine {
                 );
                 $tr = $this->getTrackerValue($color, "tr");
                 $this->notifyMessage(clienttranslate('${player_name} terraforming rating is ${count}'), ["count" => $tr]);
-                if ($tr >= 63) {
-                    $win = true;
-                }
             } else {
-                $this->notifyMessage(clienttranslate('The goal was to complete the terraforming by the end of generation ${maxgen}'), [
-                    "maxgen" => $maxgen,
-                ]);
-                if ($this->getTerraformingProgression() >= 100) {
-                    $win = true;
+                if ($this->isVenusVariant()) {
+                    $this->notifyMessage(
+                        clienttranslate('The goal was to complete the terraforming of Mars and Venus by the end of generation ${maxgen}'),
+                        ["maxgen" => $maxgen]
+                    );
+                } else {
+                    $this->notifyMessage(clienttranslate('The goal was to complete the terraforming by the end of generation ${maxgen}'), [
+                        "maxgen" => $maxgen,
+                    ]);
                 }
             }
-            if ($win) {
+            if ($this->isSoloGoalAchieved($color)) {
                 $this->notifyMessage(clienttranslate('${player_name} wins'));
             } else {
                 $this->notifyMessage(clienttranslate('${player_name} loses since they did not achieve the goal, score is negated'));

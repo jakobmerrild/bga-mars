@@ -132,12 +132,14 @@ ers|Increase Steel Exchange Rate
 o|Increase Oxygen Level
 t|Increase Temperature
 v|Raise Venus
+wgt|World Government Terraforming|${you} must choose a global parameter for the World Government to raise
 tr|Increase TR
 research|Research
 counter|Special Counter
 convh|Convert heat into temperature|${you} must confirm spent 8 heat to increase temperature by 1 step
 convp|Convert plants into Greenery|${you} must confirm spent plants to place a Greenery
 finalscoring|Final Scoring
+coloprod|Colony Production
 cardx|Play Card
 acard5|Search for Life
 flip|Flip
