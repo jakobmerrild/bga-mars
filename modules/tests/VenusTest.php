@@ -380,4 +380,96 @@ final class VenusTest extends TestCase {
         // Greenhouses / Energy Saving: city tiles in play
         $this->assertEquals(2, $m->evaluateExpression("all_city", PCOLOR));
     }
+
+    // Step 4: Venus requirements and requirement modifiers
+
+    private function venusPre(GameUT $m, int $v, string $card, string $color = PCOLOR): int {
+        $m->tokens->setTokenState("tracker_v", $v);
+        return $m->precondition($color, $card);
+    }
+
+    public function testVenusMinRequirement() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Neutralizer Factory");
+        $this->assertEquals("card_main_240", $card);
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 8, $card));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 10, $card));
+    }
+
+    public function testVenusMaxRequirement() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Rotator Impacts");
+        $this->assertEquals(MA_OK, $this->venusPre($m, 14, $card));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 16, $card));
+    }
+
+    public function testAerosportNeedsFiveFloaters() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Aerosport Tournament");
+        $dirigibles = $m->mtFind("name", "Dirigibles");
+        $m->dbSetTokenLocation($dirigibles, "tableau_" . PCOLOR, MA_CARD_STATE_ACTION_UNUSED);
+        $m->executeImmediately(PCOLOR, "res", 4, $dirigibles);
+        $this->assertEquals(4, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition(PCOLOR, $card));
+        $m->executeImmediately(PCOLOR, "res", 1, $dirigibles);
+        $this->assertEquals(MA_OK, $m->precondition(PCOLOR, $card));
+    }
+
+    public function testAdaptationTechnologyAppliesToVenus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdelta_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240")); // v>=10
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 4, "card_main_240"));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 18, "card_main_243")); // v<=14
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 20, "card_main_243"));
+    }
+
+    public function testSpecialDesignAppliesToVenus() {
+        $m = $this->venusGame();
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 6, "card_main_240"));
+        $m->effect_playCard(PCOLOR, $m->mtFind("name", "Special Design"));
+        $m->clearEventListenerCache();
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+    }
+
+    public function testInventrixAppliesToVenus() {
+        $m = $this->venusGame();
+        $m->effect_playCorporation(PCOLOR, "card_corp_6", false);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+    }
+
+    public function testVenusDeltaAppliesOnlyToVenus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 6, "card_main_240"));
+        $eos = $m->mtFind("name", "Eos Chasma National Park"); // t>=-12
+        $m->tokens->setTokenState("tracker_t", -16);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition(PCOLOR, $eos));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 6, "card_main_240", BCOLOR));
+    }
+
+    public function testVenusDeltaWorksForMaxReq() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Spin-Inducing Asteroid"); // v<=10
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 14, $card));
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 14, $card));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 16, $card));
+    }
+
+    public function testMorningStarStacksWithAdaptationTechnology() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_pdelta_" . PCOLOR, 2);
+        $m->tokens->setTokenState("tracker_pdeltav_" . PCOLOR, 2);
+        $this->assertEquals(MA_OK, $this->venusPre($m, 2, "card_main_240"));
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 0, "card_main_240"));
+    }
+
+    public function testMorningStarCorpSetsDelta() {
+        $m = $this->venusGame();
+        $m->effect_playCorporation(PCOLOR, "card_corp_17", false);
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdeltav_" . PCOLOR));
+        $this->assertEquals(0, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
+    }
 }
