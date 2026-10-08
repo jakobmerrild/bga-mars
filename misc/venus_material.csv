@@ -79,3 +79,20 @@ num|name|t|r|a|e|cost|pre|tags|vp|deck|text|text_action|text_effect|text_vp|php
 #set create=1
 #set type=stanproj
 9|Air Scrapping|0|v|||15||||Venus|For 15 M€ you get to increase Venus 1 step (and your TR)
+
+#Milestones and awards, added on every map
+#set _tr=text
+#set type=
+#set deck=Venus
+#set id=milestone_{num}
+#set php='vp'=>5
+#set location=display_milestones
+#set count=1
+#set create=1
+6|Hoverlord|7|resFloater|||8|(resFloater>=7)|||Venus|Having at least 7 floaters on your cards||||'min'=>7, 'vp'=>5
+#set id=award_{num}
+#set php=
+#set location=display_awards
+#set count=1
+#set create=1
+6|Venuphile|8|tagVenus|||20||||Venus|Having the most Venus tags in play.||||

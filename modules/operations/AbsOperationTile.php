@@ -198,12 +198,12 @@ abstract class AbsOperationTile extends AbsOperation {
 
     abstract function getTileType(): int;
 
-    function effect_placeTile() {
+    function effect_placeTile(array $options = []) {
         $hex = $this->getCheckedArg("target");
         $object = $this->getStateArg("object");
         $owner = $this->getOwner();
 
-        $tile = $this->game->effect_placeTile($owner, $object, $hex);
+        $tile = $this->game->effect_placeTile($owner, $object, $hex, $options);
         $tt = $this->game->getRulesFor($tile, "tt");
 
         if ($tt == MA_TILE_CITY) {

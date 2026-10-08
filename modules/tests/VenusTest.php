@@ -385,6 +385,393 @@ final class VenusTest extends TestCase {
         $this->assertEquals(2, $m->evaluateExpression("all_city", PCOLOR));
     }
 
+    // Step 5: World Government Terraforming and solo win rule
+
+    private function wgtOps(GameUT $m): array {
+        return array_values(array_filter($m->machine->getTopOperations(), fn($op) => $op["type"] == "wgt"));
+    }
+
+    private function resolveWgt(GameUT $m, string $tracker, string $color = PCOLOR, bool $dispatch = true) {
+        $m->push($color, "wgt");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertEquals("wgt", $op["type"]);
+        $m->fakeUserAction($op, $tracker);
+        if ($dispatch) {
+            $m->st_gameDispatch();
+        }
+    }
+
+    private function maxMars(GameUT $m) {
+        foreach (["t", "o", "w"] as $p) {
+            $m->tokens->setTokenState("tracker_$p", $m->getRulesFor("tracker_$p", "max"));
+        }
+    }
+
+    private function soloGame(int $venus = 1): GameUT {
+        $m = new GameUT();
+        $m->_setPlayerBasicInfoFromColors([PCOLOR]);
+        $m->init(0, 0, $venus);
+        $this->assertTrue($m->isSolo());
+        return $m;
+    }
+
+    public function testWgtQueuedOnlyWithVenus() {
+        $m = $this->venusGame(0);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+
+        $m = $this->venusGame();
+        $starting = $m->custom_getPlayerColorById($m->getCurrentStartingPlayer());
+        $m->effect_endOfTurn();
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $this->assertEquals($starting, $ops[0]["owner"]);
+    }
+
+    public function testWgtRaisesVenusWithoutTR() {
+        $m = $this->venusGame();
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_v");
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtVenusBonusNotGiven() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 6);
+        $this->resolveWgt($m, "tracker_v");
+        $this->assertEquals(8, $m->tokens->getTokenState("tracker_v"));
+        $draws = array_filter($m->machine->getTopOperations(), fn($op) => $op["type"] == "draw");
+        $this->assertCount(0, $draws);
+        $this->assertEquals(0, $m->tokens->countTokensInLocation("hand_" . PCOLOR));
+    }
+
+    public function testWgtTemperatureNoBonus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_t", -26);
+        $ph = $m->getTrackerValue(PCOLOR, "ph");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_t");
+        $this->assertEquals(-24, $m->tokens->getTokenState("tracker_t"));
+        $this->assertEquals($ph, $m->getTrackerValue(PCOLOR, "ph"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtOxygenNoTemperatureBonus() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_o", 7);
+        $t = $m->tokens->getTokenState("tracker_t");
+        $this->resolveWgt($m, "tracker_o");
+        $this->assertEquals(8, $m->tokens->getTokenState("tracker_o"));
+        $this->assertEquals($t, $m->tokens->getTokenState("tracker_t"));
+    }
+
+    public function testWgtOceanNoPlacementBonus() {
+        $m = $this->venusGame();
+        // ocean hex with a plant bonus next to another ocean hex
+        $target = null;
+        $other = null;
+        foreach ($m->getPlanetMap() as $hex => $info) {
+            if (!isset($info["ocean"]) || strpos($m->getRulesFor($hex, "r", ""), "p") === false) {
+                continue;
+            }
+            foreach ($m->getAdjecentHexes($hex) as $adj) {
+                if ($m->getRulesFor($adj, "ocean", 0)) {
+                    $target = $hex;
+                    $other = $adj;
+                    break 2;
+                }
+            }
+        }
+        $this->assertNotNull($target);
+        $m->tokens->moveToken("tile_3_1", $other, -1);
+        $m->tokens->setTokenState("tracker_w", 1);
+        $m->clean_cache();
+
+        $p = $m->getTrackerValue(PCOLOR, "p");
+        $mc = $m->getTrackerValue(PCOLOR, "m");
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->resolveWgt($m, "tracker_w");
+        $tops = $m->machine->getTopOperations(PCOLOR);
+        $op = reset($tops);
+        $this->assertEquals("w(wgt)", $op["type"]);
+        $m->fakeUserAction($op, $target);
+        $m->st_gameDispatch();
+
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_w"));
+        $this->assertNotNull($m->tokens->getTokenOnLocation($target));
+        $this->assertEquals($p, $m->getTrackerValue(PCOLOR, "p"));
+        $this->assertEquals($mc, $m->getTrackerValue(PCOLOR, "m"));
+        $this->assertEquals($tr, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testWgtOceanStillTriggersPlaceOcean() {
+        $m = $this->venusGame();
+        $m->setListeners([
+            "card_x" => ["e" => "place_ocean:2p:this:any", "owner" => BCOLOR, "key" => "card_x"],
+        ]);
+        $this->resolveWgt($m, "tracker_w");
+        $tops = $m->machine->getTopOperations(PCOLOR);
+        $op = reset($tops);
+        $hex = array_key_first(array_filter($m->getPlanetMap(), fn($info) => isset($info["ocean"])));
+        $m->fakeUserAction($op, $hex);
+        $triggered = array_filter($m->machine->getTopOperations(), fn($op) => $op["owner"] == BCOLOR && $op["data"] == "card_x:e:card_x");
+        $this->assertCount(1, $triggered);
+    }
+
+    public function testWgtSkipsMaxedParams() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_v", 30);
+        $op = $m->getOperationInstanceFromType("wgt", PCOLOR);
+        $details = $op->argPrimaryDetails();
+        $this->assertEquals(MA_ERR_MAXREACHED, $details["tracker_v"]["q"]);
+        $this->assertEquals(MA_OK, $details["tracker_t"]["q"]);
+        $this->assertFalse($op->isVoid());
+
+        $this->maxMars($m);
+        $op = $m->getOperationInstanceFromType("wgt", PCOLOR);
+        $this->assertTrue($op->isVoid());
+    }
+
+    public function testWgtFiresRaiseV() {
+        $m = $this->venusGame();
+        $m->setListeners([
+            "card_x" => ["e" => "raise_v:m:this:any", "owner" => BCOLOR, "key" => "card_x"],
+        ]);
+        $this->resolveWgt($m, "tracker_v", PCOLOR, false);
+        $triggered = array_filter($m->machine->getTopOperations(), fn($op) => $op["owner"] == BCOLOR && $op["data"] == "card_x:e:card_x");
+        $this->assertCount(1, $triggered);
+    }
+
+    public function testWgtNotRunWhenGameEnds() {
+        $m = $this->venusGame();
+        $this->maxMars($m);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+    }
+
+    private function coloniesGame(int $venus): GameUT {
+        $m = (new GameUT())->init(0, 1, $venus);
+        $m->dbSetTokenLocation("card_colo_2", "display_colonies", 1);
+        $m->dbSetTokenLocation("card_colo_3", "display_colonies", 6);
+        return $m;
+    }
+
+    private function colonyLevels(GameUT $m): array {
+        return array_map(fn($info) => $info["state"], $m->tokens->getTokensOfTypeInLocation("card_colo", "display_colonies"));
+    }
+
+    private function assertColonyProductionDone(array $before, array $after) {
+        foreach ($after as $key => $state) {
+            if ($before[$key] >= 0 && $before[$key] < 6) {
+                $this->assertEquals($before[$key] + 1, $state, $key);
+            }
+        }
+    }
+
+    public function testWgtRunsBeforeColonyProduction() {
+        $m = $this->coloniesGame(1);
+        $before = $this->colonyLevels($m);
+        $this->assertNotEmpty($before);
+        $m->effect_endOfTurn();
+        $this->assertEquals($before, $this->colonyLevels($m));
+
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $m->fakeUserAction($ops[0], "tracker_t");
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["coloprod"], $types);
+        $tops = $m->machine->getTopOperations();
+        $m->executeOperationSingle(reset($tops));
+        $this->assertColonyProductionDone($before, $this->colonyLevels($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["research"], $types);
+    }
+
+    public function testColoniesOnlyProductionUnchanged() {
+        $m = $this->coloniesGame(0);
+        $before = $this->colonyLevels($m);
+        $m->effect_endOfTurn();
+        $this->assertColonyProductionDone($before, $this->colonyLevels($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertEquals(["research"], $types);
+    }
+
+    public function testSoloWgtEachGenerationBeforeLast() {
+        $m = $this->soloGame();
+        $m->tokens->setTokenState("tracker_gen", 13);
+        $m->effect_endOfTurn();
+        $ops = $this->wgtOps($m);
+        $this->assertCount(1, $ops);
+        $this->assertEquals(PCOLOR, $ops[0]["owner"]);
+    }
+
+    public function testSoloWgtSkippedInLastGeneration() {
+        $m = $this->soloGame();
+        $m->tokens->setTokenState("tracker_gen", 14);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("lastforest", $types);
+    }
+
+    public function testSoloWgtNotQueuedWhenAllMaxed() {
+        $m = $this->soloGame();
+        $m->tokens->setTokenState("tracker_gen", 5);
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_v", 30);
+        $m->effect_endOfTurn();
+        $this->assertCount(0, $this->wgtOps($m));
+        $types = array_column($m->machine->getTopOperations(), "type");
+        $this->assertContains("research", $types);
+    }
+
+    public function testSoloVenusWinRequiresVenusMaxed() {
+        $m = $this->soloGame();
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_v", 28);
+        $this->assertFalse($m->isSoloTerraformingComplete());
+        $m->tokens->setTokenState("tracker_v", 30);
+        $this->assertTrue($m->isSoloTerraformingComplete());
+    }
+
+    public function testSoloWithoutVenusWinUnchanged() {
+        $m = $this->soloGame(0);
+        $this->assertFalse($m->isSoloTerraformingComplete());
+        $this->maxMars($m);
+        $this->assertTrue($m->isSoloTerraformingComplete());
+    }
+
+    public function testSoloGoalWithVenus() {
+        $m = $this->soloGame();
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_v", 28);
+        $this->assertFalse($m->isSoloGoalAchieved(PCOLOR));
+        $m->tokens->setTokenState("tracker_v", 30);
+        $this->assertTrue($m->isSoloGoalAchieved(PCOLOR));
+    }
+
+    public function testSoloTR63IgnoresVenus() {
+        $m = $this->soloGame();
+        $m->setGameStateValue("var_solo_flavour", 1);
+        $m->tokens->setTokenState("tracker_tr_" . PCOLOR, 63);
+        $m->tokens->setTokenState("tracker_v", 0);
+        $this->assertTrue($m->isSoloGoalAchieved(PCOLOR));
+        $m->tokens->setTokenState("tracker_tr_" . PCOLOR, 62);
+        $this->maxMars($m);
+        $m->tokens->setTokenState("tracker_v", 30);
+        $this->assertFalse($m->isSoloGoalAchieved(PCOLOR));
+    }
+
+    // Step 6 - Hoverlord milestone and Venuphile award
+
+    private function addFloaters(GameUT $m, string $card, int $count, string $color = PCOLOR) {
+        if ($m->tokens->getTokenLocation($card) != "tableau_$color") {
+            $m->dbSetTokenLocation($card, "tableau_$color", MA_CARD_STATE_ACTION_UNUSED);
+        }
+        for ($i = 0; $i < $count; $i++) {
+            $res = $m->createPlayerResource($color);
+            $m->tokens->moveToken($res, $card, 1);
+        }
+        $m->clean_cache();
+    }
+
+    private function claimStatus(GameUT $m, string $optype, string $target, string $color = PCOLOR) {
+        $op = $m->getOperationInstanceFromType($optype, $color);
+        $args = $op->argPrimaryDetails();
+        $this->assertArrayHasKey($target, $args);
+        return $args[$target]["q"];
+    }
+
+    public function testVenusOptionOnAddsHoverlordAndVenuphile() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 1);
+            $this->assertEquals("Hoverlord", $m->getTokenName("milestone_6"), "map $map");
+            $this->assertEquals("Venuphile", $m->getTokenName("award_6"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+            $this->assertEquals("display_milestones", $m->tokens->getTokenLocation("milestone_6"), "map $map");
+            $this->assertEquals("display_awards", $m->tokens->getTokenLocation("award_6"), "map $map");
+        }
+    }
+
+    public function testVenusMilestonesAbsentWithoutVenus() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 0);
+            $this->assertNull($m->tokens->getTokenInfo("milestone_6"), "map $map");
+            $this->assertNull($m->tokens->getTokenInfo("award_6"), "map $map");
+            $this->assertArrayNotHasKey("milestone_6", $m->token_types, "map $map");
+            $this->assertArrayNotHasKey("award_6", $m->token_types, "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+        }
+    }
+
+    public function testHoverlordClaim() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        // Aerial Mappers and Deuterium Export hold floaters
+        $this->addFloaters($m, "card_main_213", 4);
+        $this->addFloaters($m, "card_main_221", 2);
+        $this->assertEquals(6, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_ERR_PREREQ, $this->claimStatus($m, "claim", "milestone_6"));
+        $this->addFloaters($m, "card_main_221", 1);
+        $this->assertEquals(7, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+
+        $marker = $m->createPlayerMarker(PCOLOR);
+        $m->tokens->moveToken($marker, "milestone_6", 1);
+        $m->tokens->setTokenState("milestone_6", 1);
+        $table = [];
+        $m->scoreAll($table);
+        $player_id = $m->getPlayerIdByColor(PCOLOR);
+        $this->assertEquals(5, $table[$player_id]["details"]["milestones"]["milestone_6"]["vp"]);
+        $this->assertEquals(5, $table[$player_id]["total_details"]["milestones"]);
+    }
+
+    public function testVenuphileAward() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->tokens->setTokenState("tracker_tagVenus_" . PCOLOR, 2);
+        $m->tokens->setTokenState("tracker_tagVenus_" . BCOLOR, 1);
+        $m->clean_cache();
+        $this->assertEquals(2, $m->evaluateExpression("tagVenus", PCOLOR));
+        $table = [];
+        $m->scoreAward("award_6", $table);
+        $p = $m->getPlayerIdByColor(PCOLOR);
+        $b = $m->getPlayerIdByColor(BCOLOR);
+        $this->assertEquals(1, $table[$p]["details"]["awards"]["award_6"]["place"]);
+        $this->assertEquals(5, $table[$p]["details"]["awards"]["award_6"]["vp"]);
+        $this->assertEquals(0, $table[$b]["details"]["awards"]["award_6"]["vp"]);
+    }
+
+    public function testMaxThreeMilestonesStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        $this->addFloaters($m, "card_main_213", 7);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "milestone_$num", 1);
+            $m->tokens->setTokenState("milestone_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "claim", "milestone_6"));
+    }
+
+    public function testMaxThreeAwardsStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 30);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "fund", "award_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "award_$num", 1);
+            $m->tokens->setTokenState("award_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "fund", "award_6"));
+    }
+
     // Step 4: Venus requirements and requirement modifiers
 
     private function venusPre(GameUT $m, int $v, string $card, string $color = PCOLOR): int {

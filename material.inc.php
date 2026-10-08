@@ -5913,6 +5913,33 @@ $this->token_types = [
   'deck' => 'Venus',
   'text' => clienttranslate('For 15 M€ you get to increase Venus 1 step (and your TR)'),
 ],
+// #Milestones and awards, added on every map
+ 'milestone_6' => [  //
+  'location' => 'display_milestones',
+  'create' => 1,
+  'count' => 1,
+  'deck' => 'Venus',
+  'min'=>7, 'vp'=>5,
+  'num' => 6,
+  'name' => clienttranslate('Hoverlord'),
+  't' => 7,
+  'r' => 'resFloater',
+  'cost' => 8,
+  'pre' => '(resFloater>=7)',
+  'text' => clienttranslate('Having at least 7 floaters on your cards'),
+],
+ 'award_6' => [  //
+  'location' => 'display_awards',
+  'create' => 1,
+  'count' => 1,
+  'deck' => 'Venus',
+  'num' => 6,
+  'name' => clienttranslate('Venuphile'),
+  't' => 8,
+  'r' => 'tagVenus',
+  'cost' => 20,
+  'text' => clienttranslate('Having the most Venus tags in play.'),
+],
     /* --- gen php end venus_material --- */
 
     /* --- gen php begin proj_material --- */
@@ -7218,6 +7245,11 @@ $this->token_types = [
   'type' => 'v',
   'name' => clienttranslate('Raise Venus'),
 ],
+ 'op_wgt' => [  //
+  'type' => 'wgt',
+  'name' => clienttranslate('World Government Terraforming'),
+  'prompt' => clienttranslate('${you} must choose a global parameter for the World Government to raise'),
+],
  'op_tr' => [  //
   'type' => 'tr',
   'name' => clienttranslate('Increase TR'),
@@ -7243,6 +7275,10 @@ $this->token_types = [
  'op_finalscoring' => [  //
   'type' => 'finalscoring',
   'name' => clienttranslate('Final Scoring'),
+],
+ 'op_coloprod' => [  //
+  'type' => 'coloprod',
+  'name' => clienttranslate('Colony Production'),
 ],
  'op_cardx' => [  //
   'type' => 'cardx',
