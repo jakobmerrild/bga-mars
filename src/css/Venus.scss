@@ -508,3 +508,22 @@ $tile-banner-center: 82%; // vertical centre of the name banner inside the tile
     font-size: calc(var(--resourcesize) * 0.55);
   }
 }
+
+/* Venus corporations have no scans: generated stand-in faces and logos
+   (misc/other/gen_venus_placeholders.py), one sprite slot per corp, card_corp_14..18.
+   The rules text is overlaid by .card_initial / .card_effect in both layouts. */
+@for $num from 14 through 18 {
+  $col: $num - 14;
+
+  .card.corp.card_corp_#{$num} .card_bg {
+    background-image: url(img/venus/venus_corps.jpg);
+    background-size: 500% 100%;
+    background-position: calc(100% / 4 * #{$col}) 0;
+  }
+
+  .corp_logo[data-corp="card_corp_#{$num}"] {
+    background-image: url(img/venus/venus_corps_logo.png);
+    background-size: 500% 100%;
+    background-position: calc(100% / 4 * #{$col}) 0;
+  }
+}
