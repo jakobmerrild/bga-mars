@@ -73,7 +73,8 @@ Every brief uses these names. If a step has to change one, update this table and
 | `isSoloTerraformingComplete()` | 5 | solo win check including Venus |
 | `milestone_6` Hoverlord, `award_6` Venuphile | 6 | added on every map when Venus is on |
 | hexes named `Dawn City`, `Luna Metropolis`, `Maxwell Base`, `Stratopolis` (`inspace=1`, `reserved=1`) | 7 | off-Mars city areas |
-| op `revealuntil` | 9 | reveal cards until N match |
+| op `ores(Any,<Tag>)` | 8B | add 1 resource to your card with that tag; the type is whatever the target holds |
+| op `draw(<Tag>)`, `draw(Floater)` | 9 | reveal until N match (existing Prelude op; `Floater` = floater icon, `hasFloaterIcon`) |
 | op `reuse` | 9 | Viron: reuse an action used this generation |
 
 ## Rules decisions (apply to every step)
@@ -100,4 +101,4 @@ Every brief uses these names. If a step has to change one, update this table and
 Tick a box when the step's branch is merged.
 
 - [x] 1  - [x] 2  - [x] 3  - [x] 4  - [x] 5  - [ ] 6  - [x] 7
-- [x] 8A - [ ] 8B - [ ] 8C - [ ] 9  - [ ] 10 - [ ] 11
+- [x] 8A - [x] 8B - [x] 8C - [x] 9  - [ ] 10 - [ ] 11

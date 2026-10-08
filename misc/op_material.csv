@@ -26,6 +26,7 @@ draft|Draft Card|${you} must select one card to draft (buy or discard later)
 
 #set ack=
 activate|Activate Card|${you} must select a card to activate
+reuse|Reuse Card Action|${you} must select a used blue card action to use again
 card|Play Card|${you} must select a card to play
 cardpre|Play Prelude|${you} must select a Prelude card to play
 res|Add resource to this card
@@ -41,6 +42,7 @@ skipsec|Skip Second Action|${you} must confirm skipping second action, turn cann
 draw|Draw Card in Hand|${you} must confirm draw ${count} card/s, cannot be undone
 predraw|Draw Card|${you} must confirm draw ${count} card/s, cannot be undone
 drawdis|Draw Card, Discard Card|${you} must confirm draw ${count} card/s, cannot be undone
+draw_opp|All Opponents Draw Card
 
 #set class=Operation_confirm
 #set ack=

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 /** 
  * Add resource specified by static parameter to any card on your tableau i.e. ores(Animal).
+ * Second parameter limits targets to cards with that tag i.e. ores(Floater,Jovian).
+ * Resource type Any means any card that holds resources, the resource added is the type the target holds
+ * i.e. ores(Any,Venus).
  * This cannot fail - it can be skipped.
  */
 class Operation_ores extends  AbsOperation {
@@ -27,8 +30,17 @@ class Operation_ores extends  AbsOperation {
         });
     }
 
+    /** resource type to add, empty means any type */
     function getResTarget() {
-        return $this->getParam(0, '');
+        $par = $this->getParam(0, '');
+        if ($par == 'Any') return '';
+        return $par;
+    }
+
+    function getResTypeName() {
+        $par = $this->getResTarget();
+        if (!$par) return clienttranslate('resource');
+        return $this->game->getTokenName("tag$par");
     }
 
     function getCardTarget() {
@@ -64,11 +76,10 @@ class Operation_ores extends  AbsOperation {
     }
 
     protected function getVisargs() {
-        $par = $this->getResTarget();
         return [
             "name" => $this->getOpName(),
             'count' => $this->getCount(),
-            'restype_name' => $this->game->getTokenName("tag$par"),
+            'restype_name' => $this->getResTypeName(),
             'i18n' => ['restype_name']
         ];
     }
@@ -78,7 +89,7 @@ class Operation_ores extends  AbsOperation {
         $tag = $this->getCardTarget();
         if ($tag) {
             return ['log' => clienttranslate('Add ${restype_name} to any card with ${tag} tag'),  "args" => [
-                'restype_name' => $this->game->getTokenName("tag$par"),
+                'restype_name' => $this->getResTypeName(),
                 'tag' => $this->game->getTokenName("tag$tag"),
                 'i18n' => ['restype_name', 'tag']
             ]];
@@ -86,12 +97,12 @@ class Operation_ores extends  AbsOperation {
         $context = $this->getContext(0);
         if ($this->game->getRulesFor($context, 'holds') == $par) {
             return ['log' => clienttranslate('Add ${restype_name} to ANY card'),  "args" => [
-                'restype_name' => $this->game->getTokenName("tag$par"),
+                'restype_name' => $this->getResTypeName(),
                 'i18n' => ['restype_name']
             ]];
         }
         return ['log' => clienttranslate('Add ${restype_name} to another card'),  "args" => [
-            'restype_name' => $this->game->getTokenName("tag$par"),
+            'restype_name' => $this->getResTypeName(),
             'i18n' => ['restype_name']
         ]];
     }

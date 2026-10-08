@@ -45,7 +45,8 @@ class Operation_discard extends AbsOperation {
         }
         $color = $this->color;
         $keys = array_keys($this->game->tokens->getTokensInLocation("hand_$color"));
-        return $keys;
+        // the card being played cannot discard itself (it is still in hand when playability is checked)
+        return array_values(array_diff($keys, [$this->getContext(0)]));
     }
 
     function requireConfirmation() {

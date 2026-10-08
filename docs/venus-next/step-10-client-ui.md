@@ -29,7 +29,7 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
   next to `exp-colonies`).
 - `tracker_v` (0..30, param), track bonuses at 8 and 16, `card_stanproj_9` Air Scrapping.
 - `tracker_tagVenus_<color>` (CSS `.tracker_tagVenus` exists in `src/css/PlayerBoard.scss` ~line 238).
-- `wgt` op (choose t/o/w/v, then an ocean hex if ocean), `revealuntil`, `reuse` ops.
+- `wgt` op (choose t/o/w/v, then an ocean hex if ocean), `draw(Venus)`/`draw(Floater)` (reveal until), `reuse` ops.
 - `milestone_6` Hoverlord, `award_6` Venuphile.
 - Hexes `hex_0_4`..`hex_0_7` (Dawn City, Luna Metropolis, Maxwell Base, Stratopolis) with placeholder
   divs and positions from step 7.
@@ -59,7 +59,7 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
    all maps - see the per-map `.hex_phobos` rules in `VLayout.scss` ~lines 469-515).
 7. **Payment**: Dirigibles floaters appear as a payment option when paying for a Venus card (if not
    already done in step 8C).
-8. **Revealed cards** from `revealuntil` are shown in the log.
+8. **Revealed cards** from `draw(Venus)`/`draw(Floater)` are shown in the log.
 9. **Morning Star delta**: `tracker_pdeltav_<color>` (step 4, `player_tags_<color>`) has a tooltip but no
    icon; give it one like `tracker_pdelta` (`.tracker_pdelta` in `GameXBody.scss` / `PlayerBoard.scss`).
 

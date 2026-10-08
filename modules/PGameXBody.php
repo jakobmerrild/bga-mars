@@ -1532,32 +1532,44 @@ abstract class PGameXBody extends PGameMachine {
 
         $this->effect_moveCard($color, $card_id, "reveal", MA_CARD_STATE_SELECTED);
 
-        $tags = $this->getRulesFor($card_id, "tags", "");
         $args = ["tag_name" => $tag_name];
         if ($showWarning) {
             $args += ["_notifType" => "message_warning"];
         }
         $this->giveExtraTime($this->getPlayerIdByColor($color)); // compensate for reveal time
-        if (strstr($tags, $tag_name)) {
-            $this->notifyMessageWithTokenName(
-                clienttranslate('${player_name} reveals ${token_name}: it has a ${tag_name} tag'),
-                $card_id,
-                $color,
-                $args
-            );
+        if ($tag_name == "Floater") {
+            // Celestic: not a tag, any card with a floater icon
+            $match = $this->hasFloaterIcon($card_id);
+            $yes = clienttranslate('${player_name} reveals ${token_name}: it has a floater icon');
+            $no = clienttranslate('${player_name} reveals ${token_name}: it does not have a floater icon');
+        } else {
+            $match = strstr($this->getRulesFor($card_id, "tags", ""), $tag_name);
+            $yes = clienttranslate('${player_name} reveals ${token_name}: it has a ${tag_name} tag');
+            $no = clienttranslate('${player_name} reveals ${token_name}: it does not have a ${tag_name} tag');
+        }
+        if ($match) {
+            $this->notifyMessageWithTokenName($yes, $card_id, $color, $args);
             $this->notifyAnimate(1000); // delay to show the card
             return $card_id;
         } else {
-            $this->notifyMessageWithTokenName(
-                clienttranslate('${player_name} reveals ${token_name}: it does not have a ${tag_name} tag'),
-                $card_id,
-                $color,
-                $args
-            );
+            $this->notifyMessageWithTokenName($no, $card_id, $color, $args);
             $this->notifyAnimate(500); // delay to show the card
             $this->effect_moveCard($color, $card_id, "discard_main", 0);
             return false;
         }
+    }
+
+    /** card shows a floater icon: it holds floaters, or adds, spends or requires them */
+    function hasFloaterIcon(string $card_id): bool {
+        if ($this->getRulesFor($card_id, "holds", "") == "Floater") {
+            return true;
+        }
+        foreach (["r", "a", "e", "pre"] as $field) {
+            if (strstr((string) $this->getRulesFor($card_id, $field, ""), "Floater")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function getNextDraftPlayerColor($color) {
@@ -2376,6 +2388,10 @@ abstract class PGameXBody extends PGameMachine {
             ["mod" => $mod, "token_name" => $token_id] + $options,
             $this->getPlayerIdByColor($color)
         );
+        if ($inc > 0 && $this->playerHasCard($color, "card_corp_16")) {
+            // Manutech: also gain the resource for each production step increased
+            $this->effect_incCount($color, substr($type, 1), $inc, ["reason_tr" => $this->getTokenName("card_corp_16")]);
+        }
     }
 
     function effect_increaseParam($color, $type, $steps, $perstep = 1, array $options = []) {

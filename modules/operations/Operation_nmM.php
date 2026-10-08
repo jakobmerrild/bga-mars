@@ -3,8 +3,15 @@
 declare(strict_types=1);
 
 define("MA_RES_MICROBE", "resMicrobe");
+define("MA_RES_FLOATER", "resFloater");
 // ops like nmu and nms - pay with titanium/ pay with steal
 class Operation_nmM extends AbsOperation {
+    // card resources usable as payment for cards with a tag: resource type => [card, tag, rate]
+    const CARD_RES_PAYMENT = [
+        MA_RES_MICROBE => ["card_main_P39", "Plant", 2], // Psychrophiles
+        MA_RES_FLOATER => ["card_main_222", "Venus", 3], // Dirigibles
+    ];
+
     public function __construct(string $type, array $opinfo, PGameXBody $game) {
         parent::__construct($type == "nmM" ? "nm" : $type, $opinfo, $game);
     }
@@ -126,10 +133,10 @@ class Operation_nmM extends AbsOperation {
     }
 
     function getCountOfResourceType($type) {
-        if ($type == MA_RES_MICROBE) {
-            //P39|Psychrophiles
-            if ($this->game->playerHasCard($this->color, "card_main_P39")) {
-                $resources = $this->game->tokens->getTokensOfTypeInLocation("resource", "card_main_P39");
+        if (array_key_exists($type, self::CARD_RES_PAYMENT)) {
+            $card = self::CARD_RES_PAYMENT[$type][0];
+            if ($this->game->playerHasCard($this->color, $card)) {
+                $resources = $this->game->tokens->getTokensOfTypeInLocation("resource", $card);
                 $num = count($resources);
                 return $num;
             }
@@ -275,8 +282,8 @@ class Operation_nmM extends AbsOperation {
     }
 
     function doPayWithResource($color, $type, $ut) {
-        if ($type == MA_RES_MICROBE) {
-            $this->game->executeImmediately($color, "nres", $ut, "card_main_P39");
+        if (array_key_exists($type, self::CARD_RES_PAYMENT)) {
+            $this->game->executeImmediately($color, "nres", $ut, self::CARD_RES_PAYMENT[$type][0]);
         } else {
             $this->game->effect_incCount($color, $type, -$ut);
         }
@@ -305,11 +312,10 @@ class Operation_nmM extends AbsOperation {
         if (strstr($tags, "Space")) {
             $types[] = "u";
         }
-        if ($this->game->playerHasCard($color, "card_main_P39")) {
-            //P39|Psychrophiles
-            if (strstr($tags, "Plant")) {
-                $types[] = MA_RES_MICROBE;
-            } // resources
+        foreach (self::CARD_RES_PAYMENT as $restype => [$card, $tag]) {
+            if (strstr($tags, $tag) && $this->game->playerHasCard($color, $card)) {
+                $types[] = $restype;
+            }
         }
 
         $types[] = "m";
@@ -339,9 +345,9 @@ class Operation_nmM extends AbsOperation {
         if ($type == "h") {
             return 1;
         }
-        if ($type == MA_RES_MICROBE) {
-            return 2;
-        } // for now only microbes
+        if (array_key_exists($type, self::CARD_RES_PAYMENT)) {
+            return self::CARD_RES_PAYMENT[$type][2];
+        }
         if ($type == "s" || $type == "u") {
             $er = $this->game->getTrackerValue($this->color, "er$type");
             return $er;
