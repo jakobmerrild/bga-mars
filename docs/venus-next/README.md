@@ -101,4 +101,4 @@ Every brief uses these names. If a step has to change one, update this table and
 Tick a box when the step's branch is merged.
 
 - [x] 1  - [x] 2  - [x] 3  - [x] 4  - [x] 5  - [ ] 6  - [x] 7
-- [x] 8A - [ ] 8B - [ ] 8C - [ ] 9  - [ ] 10 - [ ] 11
+- [x] 8A - [x] 8B - [ ] 8C - [ ] 9  - [ ] 10 - [ ] 11
