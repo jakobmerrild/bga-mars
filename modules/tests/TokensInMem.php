@@ -86,9 +86,15 @@ class TokensInMem extends DbTokens {
         return array_count_values(array_column($this->keyindex, "location"));
     }
 
+    function getTokensOnTop($nbr, $location) {
+        $tokens = array_values($this->getTokensOfTypeInLocation(null, $location));
+        usort($tokens, fn($a, $b) => $b["state"] <=> $a["state"]);
+        return array_slice($tokens, 0, $nbr);
+    }
+
     function pickTokensForLocation($nbr, $from_location, $to_location, $state = 0, $no_deck_reform = false, &$was_reshuffled = null) {
         $was_reshuffled = false;
-        $tokens = array_slice(array_values($this->getTokensOfTypeInLocation(null, $from_location)), 0, $nbr);
+        $tokens = $this->getTokensOnTop($nbr, $from_location);
         foreach ($tokens as $i => $token) {
             $this->moveToken($token["key"], $to_location, $state);
             $tokens[$i] = $this->keyindex[$token["key"]];

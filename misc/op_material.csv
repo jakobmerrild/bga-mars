@@ -26,6 +26,7 @@ draft|Draft Card|${you} must select one card to draft (buy or discard later)
 
 #set ack=
 activate|Activate Card|${you} must select a card to activate
+reuse|Reuse Card Action|${you} must select a used blue card action to use again
 card|Play Card|${you} must select a card to play
 cardpre|Play Prelude|${you} must select a Prelude card to play
 res|Add resource to this card

@@ -5860,6 +5860,7 @@ $this->token_types = [
   'name' => clienttranslate('Aphrodite'),
   't' => 4,
   'r' => 'pp',
+  'e' => 'raise_v:2m:this:any',
   'cost' => -47,
   'tags' => 'Plant Venus',
   'vp' => 0,
@@ -5875,6 +5876,7 @@ $this->token_types = [
   'num' => 15,
   'name' => clienttranslate('Celestic'),
   't' => 4,
+  'a' => 'ores(Floater)',
   'cost' => -42,
   'tags' => 'Venus',
   'vp' => 'resCard/3',
@@ -5882,7 +5884,7 @@ $this->token_types = [
   'text' => clienttranslate('You start with 42 M€. As your first action, reveal cards from the deck until you have revealed 2 cards with a floater icon on it. Take those 2 cards into hand and discard the rest.'),
   'text_action' => clienttranslate('Add a floater to ANY card.'),
   'text_vp' => clienttranslate('1 VP per 3 floaters on this card.'),
-  'holds' => 'Floater',
+  'holds' => 'Floater','a1'=>'2draw(Floater)',
 ],
  'card_corp_16' => [  //
   'location' => 'deck_corp',
@@ -5915,6 +5917,7 @@ $this->token_types = [
   'deck' => 'Venus',
   'text' => clienttranslate('You start with 50 M€. As your first action, reveal cards from the deck until you have revealed 3 Venus-tag cards. Take those into hand and discard the rest.'),
   'text_effect' => clienttranslate('Your Venus requirements are +/- 2 steps, your choice in each case.'),
+  'a1'=>'3draw(Venus)',
 ],
  'card_corp_18' => [  //
   'location' => 'deck_corp',
@@ -5924,6 +5927,7 @@ $this->token_types = [
   'num' => 18,
   'name' => clienttranslate('Viron'),
   't' => 4,
+  'a' => 'reuse',
   'cost' => -48,
   'tags' => 'Microbe',
   'vp' => 0,
@@ -6893,6 +6897,11 @@ $this->token_types = [
   'type' => 'activate',
   'name' => clienttranslate('Activate Card'),
   'prompt' => clienttranslate('${you} must select a card to activate'),
+],
+ 'op_reuse' => [  //
+  'type' => 'reuse',
+  'name' => clienttranslate('Reuse Card Action'),
+  'prompt' => clienttranslate('${you} must select a used blue card action to use again'),
 ],
  'op_card' => [  //
   'type' => 'card',
