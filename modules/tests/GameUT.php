@@ -14,6 +14,7 @@ class GameUT extends terraformingmars {
     var $map_number = 0;
     var $var_colonies = 0;
     var $var_venus = 0;
+    var $stats = [];
     function __construct() {
         include "./material.inc.php";
         include "./states.inc.php";
@@ -79,6 +80,20 @@ class GameUT extends terraformingmars {
         }
         $this->saction_stack($count, $op, $tops);
         return $count;
+    }
+
+    // in-memory stats, the stubs do not keep them (first action of the game depends on game_actions)
+    function setStat(int $value, string $name, ?int $player_id = null, bool $bDoNotLoop = false): void {
+        parent::setStat($value, $name, $player_id, $bDoNotLoop);
+        $this->stats[$name][$player_id ?? 0] = $value;
+    }
+
+    function incStat(int $inc, string $name, ?int $playerId = null, bool $bDoNotLoop = false): void {
+        $this->stats[$name][$playerId ?? 0] = $this->getStat($name, $playerId) + $inc;
+    }
+
+    function getStat(string $name, ?int $player_id = null): int {
+        return $this->stats[$name][$player_id ?? 0] ?? 0;
     }
 
     function getAllDatasForTest() {

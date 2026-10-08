@@ -1525,6 +1525,17 @@ final class VenusTest extends TestCase {
         $m->st_gameDispatch();
     }
 
+    /** the first turn of the game offers the corporation's first action (or pass) instead of the standard actions */
+    private function runFirstTurn(GameUT $m, string $corp, string $color = PCOLOR) {
+        $m->machine->interrupt();
+        $m->push($color, "turn");
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        $a1 = $m->getRulesFor($corp, "a1");
+        $this->assertEquals([$a1, "pass"], $this->topOpTypes($m, $color));
+        $this->choose($m, $a1, null, null, $color);
+    }
+
     public function testAphroditeGainsOnAnyVenusRaise() {
         $m = $this->venusGame();
         $this->playCorp($m, "card_corp_14");
@@ -1594,6 +1605,26 @@ final class VenusTest extends TestCase {
         $this->assertEquals($discard + 2, $m->tokens->countTokensInLocation("discard_main"));
     }
 
+    public function testMorningStarFirstTurnDrawsThreeVenusCards() {
+        $m = $this->venusGame();
+        $corp = "card_corp_17";
+        $this->playCorp($m, $corp);
+        $this->stackDeck($m, ["card_main_1", "card_main_233", "card_main_3", "card_main_240", "card_main_4", "card_main_5", "card_main_255", "card_main_6"]);
+        $hand = $this->handCount($m, PCOLOR);
+        $this->runFirstTurn($m, $corp);
+
+        $this->assertEquals($hand + 3, $this->handCount($m, PCOLOR));
+        foreach (["card_main_233", "card_main_240", "card_main_255"] as $card) {
+            $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation($card), $card);
+        }
+        foreach (["card_main_1", "card_main_3", "card_main_4", "card_main_5"] as $card) {
+            $this->assertEquals("discard_main", $m->tokens->getTokenLocation($card), $card);
+        }
+        $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_6"));
+        // first action done, the second action is a normal one
+        $this->assertContains("card", $this->topOpTypes($m));
+    }
+
     public function testCelesticRevealUntil2Floater() {
         $m = $this->venusGame();
         $corp = "card_corp_15";
@@ -1610,6 +1641,26 @@ final class VenusTest extends TestCase {
         $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_1"));
         $this->assertEquals("discard_main", $m->tokens->getTokenLocation("card_main_3"));
         $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_4"));
+    }
+
+    public function testCelesticFirstTurnDrawsTwoFloaterCards() {
+        $m = $this->venusGame();
+        $corp = "card_corp_15";
+        $this->playCorp($m, $corp);
+        $this->stackDeck($m, ["card_main_1", "card_main_222", "card_main_3", "card_main_4", "card_main_215", "card_main_5", "card_main_214"]);
+        $hand = $this->handCount($m, PCOLOR);
+        $this->runFirstTurn($m, $corp);
+
+        $this->assertEquals($hand + 2, $this->handCount($m, PCOLOR));
+        $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation("card_main_222"));
+        $this->assertEquals("hand_" . PCOLOR, $m->tokens->getTokenLocation("card_main_215"));
+        foreach (["card_main_1", "card_main_3", "card_main_4"] as $card) {
+            $this->assertEquals("discard_main", $m->tokens->getTokenLocation($card), $card);
+        }
+        $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_5"));
+        $this->assertEquals("deck_main", $m->tokens->getTokenLocation("card_main_214"));
+        // first action done, the second action is a normal one
+        $this->assertContains("card", $this->topOpTypes($m));
     }
 
     public function testCelesticActionAndVp() {
