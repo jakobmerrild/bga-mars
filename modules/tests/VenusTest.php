@@ -248,6 +248,10 @@ final class VenusTest extends TestCase {
         $m->effect_playCard(PCOLOR, "card_main_233"); // Ishtar Mining
         $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
         $m->st_gameDispatch();
+        // the trigger and the card's own rule (pu) have the same priority, so the player orders them
+        $triggered = array_filter($m->machine->getTopOperations(PCOLOR), fn($op) => $op["type"] == "m");
+        $this->assertCount(1, $triggered);
+        $m->fakeUserAction(reset($triggered));
         $this->assertEquals($before + 1, $m->getTrackerValue(PCOLOR, "m"));
     }
 
@@ -471,5 +475,196 @@ final class VenusTest extends TestCase {
         $m->effect_playCorporation(PCOLOR, "card_corp_17", false);
         $this->assertEquals(2, $m->tokens->getTokenState("tracker_pdeltav_" . PCOLOR));
         $this->assertEquals(0, $m->tokens->getTokenState("tracker_pdelta_" . PCOLOR));
+    }
+
+    // Step 8A: project cards that only need existing operations
+
+    private function venusCards(GameUT $m): array {
+        return array_filter($m->token_types, fn($info) => array_get($info, "deck") == "Venus");
+    }
+
+    /** leaf operation types of a rule, e.g. "2npe,city('X')" -> ["npe", "city"] */
+    private function leafOpTypes($expr): array {
+        if ($expr instanceof OpExpressionTerminal) {
+            $type = (string) $expr;
+            if (preg_match("/^(\w+)\((.*)\)$/", $type, $matches)) {
+                $type = $matches[1];
+            }
+            return [$type];
+        }
+        $res = [];
+        foreach ($expr->args as $arg) {
+            $res = array_merge($res, $this->leafOpTypes($arg));
+        }
+        return $res;
+    }
+
+    /** operation rules of a card: r and a as is, e split into the outcome of each trigger */
+    private function cardRules(GameUT $m, array $info): array {
+        $rules = [];
+        foreach (["r", "a"] as $field) {
+            $rule = array_get($info, $field, "");
+            if ($rule) {
+                $rules["$field $rule"] = $rule;
+            }
+        }
+        $e = array_get($info, "e", "");
+        if ($e) {
+            $expr = $m->parseOpExpression($e);
+            $triggers = $expr->op == ";" ? $expr->args : [$expr];
+            foreach ($triggers as $trigger) {
+                $this->assertEquals(":", $trigger->op, "e $e");
+                $outcome = (string) $trigger->args[1];
+                $rules["e $outcome"] = $outcome;
+            }
+        }
+        return $rules;
+    }
+
+    public function testAllVenusCardsParse() {
+        $m = $this->venusGame();
+        $cards = $this->venusCards($m);
+        $this->assertCount(49 + 5 + 1, $cards); // projects, corporations, Air Scrapping
+        $dir = dirname(__DIR__) . "/operations";
+        foreach ($cards as $key => $info) {
+            foreach ($this->cardRules($m, $info) as $what => $rule) {
+                $this->assertNotEmpty(OpExpression::arr($rule), "$key $what");
+                foreach ($this->leafOpTypes($m->parseOpExpression($rule)) as $type) {
+                    $class = $m->getOperationRules($type, "class", "Operation_$type");
+                    // a missing class file is a fatal error in getOperationInstance, so check first
+                    $this->assertFileExists("$dir/$class.php", "$key $what: unknown op '$type'");
+                    $this->assertInstanceOf(AbsOperation::class, $m->getOperationInstanceFromType($type, PCOLOR), "$key $what");
+                }
+                $this->assertInstanceOf(AbsOperation::class, $m->getOperationInstanceFromType($rule, PCOLOR, 1, $key), "$key $what");
+            }
+        }
+    }
+
+    public function testAllVenusCardsHaveValidPre() {
+        $m = $this->venusGame();
+        foreach ($this->venusCards($m) as $key => $info) {
+            $pre = array_get($info, "pre", "");
+            if ($pre) {
+                $this->assertContains($m->precondition(PCOLOR, $key), [MA_OK, MA_ERR_PREREQ], "$key $pre");
+            }
+        }
+    }
+
+    private function playVenusCard(GameUT $m, string $name, string $color = PCOLOR): string {
+        $card = $m->mtFind("name", $name);
+        $this->assertNotNull($card, $name);
+        $m->effect_playCard($color, $card);
+        $m->gamestate->jumpToState(STATE_GAME_DISPATCH);
+        $m->st_gameDispatch();
+        return $card;
+    }
+
+    public function testGiantSolarShade() {
+        $m = $this->venusGame();
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->playVenusCard($m, "Giant Solar Shade");
+        $this->assertEquals(6, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 3, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testGHGImportFromVenus() {
+        $m = $this->venusGame();
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $ph = $m->getTrackerValue(PCOLOR, "ph");
+        $this->playVenusCard($m, "GHG Import From Venus");
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($ph + 3, $m->getTrackerValue(PCOLOR, "ph"));
+        $this->assertEquals($tr + 1, $m->getTrackerValue(PCOLOR, "tr"));
+        // events do not keep their tags in play
+        $this->assertEquals(0, $m->getTrackerValue(PCOLOR, "tagVenus"));
+    }
+
+    public function testSulphurExportsCountsItself() {
+        $m = $this->venusGame();
+        $m->tokens->setTokenState("tracker_tagVenus_" . PCOLOR, 1);
+        $pm = $m->getTrackerValue(PCOLOR, "pm");
+        $this->playVenusCard($m, "Sulphur Exports");
+        $this->assertEquals(2, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($pm + 2, $m->getTrackerValue(PCOLOR, "pm"));
+    }
+
+    public function testGyropolisVenusAndEarth() {
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $card = $m->mtFind("name", "Gyropolis");
+        $m->setTrackerValue($color, "m", 20);
+        $m->setTrackerValue($color, "pe", 1);
+        $this->assertEquals(MA_ERR_MANDATORYEFFECT, $m->playability($color, $card));
+
+        $m->setTrackerValue($color, "pe", 2);
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 2);
+        $m->tokens->setTokenState("tracker_tagEarth_{$color}", 1);
+        $this->assertEquals(MA_OK, $m->playability($color, $card));
+        $pm = $m->getTrackerValue($color, "pm");
+        $this->playVenusCard($m, "Gyropolis");
+        $tops = $m->machine->getTopOperations($color);
+        $op = reset($tops);
+        $this->assertEquals("city", $op["type"]);
+        $m->fakeUserAction($op, "hex_4_3");
+        $m->st_gameDispatch();
+        $this->assertEquals($pm + 3, $m->getTrackerValue($color, "pm"));
+        $this->assertEquals(0, $m->getTrackerValue($color, "pe"));
+        $this->assertEquals(1, $m->getTrackerValue($color, "city"));
+    }
+
+    public function testTerraformingContractNeeds25TR() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Terraforming Contract");
+        $m->setTrackerValue(PCOLOR, "tr", 24);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition(PCOLOR, $card));
+        $m->setTrackerValue(PCOLOR, "tr", 25);
+        $this->assertEquals(MA_OK, $m->precondition(PCOLOR, $card));
+        $pm = $m->getTrackerValue(PCOLOR, "pm");
+        $this->playVenusCard($m, "Terraforming Contract");
+        $this->assertEquals($pm + 4, $m->getTrackerValue(PCOLOR, "pm"));
+    }
+
+    public function testLuxuryFoodsRequirementWithWild() {
+        $m = $this->venusGame();
+        $color = PCOLOR;
+        $card = $m->mtFind("name", "Luxury Foods");
+        $m->tokens->setTokenState("tracker_tagVenus_{$color}", 1);
+        $m->tokens->setTokenState("tracker_tagEarth_{$color}", 1);
+        $this->assertEquals(MA_ERR_PREREQ, $m->precondition($color, $card));
+        $m->tokens->setTokenState("tracker_tagWild_{$color}", 1);
+        $this->assertEquals(MA_OK, $m->precondition($color, $card));
+    }
+
+    public function testSpinInducingAsteroidMaxReq() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Spin-Inducing Asteroid");
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 12, $card));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 10, $card));
+        $this->playVenusCard($m, "Spin-Inducing Asteroid");
+        $this->assertEquals(14, $m->tokens->getTokenState("tracker_v"));
+    }
+
+    public function testNeutralizerFactoryAtVenusBonus() {
+        $m = $this->venusGame();
+        $card = $m->mtFind("name", "Neutralizer Factory");
+        $this->assertEquals(MA_ERR_PREREQ, $this->venusPre($m, 6, $card));
+        $this->assertEquals(MA_OK, $this->venusPre($m, 14, $card));
+        $tr = $m->getTrackerValue(PCOLOR, "tr");
+        $this->playVenusCard($m, "Neutralizer Factory");
+        $this->assertEquals(16, $m->tokens->getTokenState("tracker_v"));
+        $this->assertEquals($tr + 2, $m->getTrackerValue(PCOLOR, "tr"));
+    }
+
+    public function testSimpleVenusCardsVp() {
+        $m = $this->venusGame();
+        $expected = [
+            "Atalanta Planitia Lab" => 2,
+            "Luxury Foods" => 2,
+            "Solarnet" => 1,
+            "Terraforming Contract" => 0,
+        ];
+        foreach ($expected as $name => $vp) {
+            $this->assertEquals($vp, $m->getRulesFor($m->mtFind("name", $name), "vp"), $name);
+        }
     }
 }
