@@ -311,6 +311,13 @@ describe("CustomRenders", () => {
       expect(CustomRenders.getParse("ores(Floater,Venus)").classes).to.equal("token_img tracker_resFloater");
       expect(CustomRenders.getParse("ores(Microbe,Venus)").classes).to.equal("token_img tracker_resMicrobe");
       expect(CustomRenders.getParse("ores(Animal,Venus)").classes).to.equal("token_img tracker_resAnimal");
+      expect(CustomRenders.getParse("ores(Any,Venus)").classes).to.equal("token_img tracker_resAny");
+    });
+
+    it("should render remove from any player restricted by tag", () => {
+      const parse = CustomRenders.getParse("nm_Any(Venus)");
+      expect(parse.classes).to.equal("token_img tracker_m");
+      expect(parse.redborder).to.equal("resource");
     });
   });
 });

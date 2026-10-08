@@ -12486,6 +12486,20 @@ html[lang=ar].mcompact #ebd-body.mobile_portrait .award_label {
   display: block;
 }
 
+/* "any resource" (Corroder Suits, Maxwell Base): no icon in the sprites */
+.token_img.tracker_resAny {
+  background-image: linear-gradient(135deg, #f2f2f2 0%, #a9b0b6 100%);
+  background-size: 100% 100%;
+  border-radius: 25%;
+  box-shadow: inset 0 0 0 calc(var(--resourcesize) * 0.06) #555;
+}
+.token_img.tracker_resAny::before {
+  content: "?";
+  color: #333;
+  font-family: var(--mars-font);
+  font-size: calc(var(--resourcesize) * 0.55);
+}
+
 /* latin */
 @font-face {
   font-family: "Tangerine";

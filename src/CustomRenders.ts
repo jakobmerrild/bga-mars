@@ -47,6 +47,7 @@ class CustomRenders {
     ores_Microbe: { classes: "token_img tracker_resMicrobe", after: "*", norepeat: true },
     ores_Animal: { classes: "token_img tracker_resAnimal", after: "*", norepeat: true },
     ores_Floater: { classes: "token_img tracker_resFloater", after: "*", norepeat: true },
+    ores_Any: { classes: "token_img tracker_resAny", after: "*", norepeat: true },
 
     special_tagmicrobe_half: { classes: "tracker badge tracker_tagMicrobe", content: "2", norepeat: true },
 
@@ -238,7 +239,7 @@ class CustomRenders {
         arg = arg.replace("ores(Animal)", "resAnimal");
         arg = arg.replace("ores(Floater)", "resFloater");
         arg = arg.replace("ores(Floater,Jovian)", "resFloater");
-        arg = arg.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "res$1");
+        arg = arg.replace(/ores\((Microbe|Animal|Floater|Any),\w+\)/, "res$1");
         opId = arg;
       }
 
@@ -357,7 +358,9 @@ class CustomRenders {
     item = item.replace("ores(Animal)", "ores_Animal");
     item = item.replace("ores(Floater)", "ores_Floater");
     item = item.replace("ores(Floater,Jovian)", "ores_Floater");
-    item = item.replace(/ores\((Microbe|Animal|Floater),\w+\)/, "ores_$1");
+    item = item.replace(/ores\((Microbe|Animal|Floater|Any),\w+\)/, "ores_$1");
+    // any player restricted by tag, e.g. Comet for Venus 4nm_Any(Venus): same icon as any player
+    item = item.replace(/_Any\(\w+\)$/, "_Any");
 
     item = item.replace("counter('(tagPlant>=3)*4')", "special_tagplant_sup3");
     item = item.replace("tagMicrobe/2", "special_tagmicrobe_half");
