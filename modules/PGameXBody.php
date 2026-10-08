@@ -328,6 +328,16 @@ abstract class PGameXBody extends PGameMachine {
         return (100 * ($oxigen / $max_oxigen + $oceans / $max_oceans + ($temp + 30) / ($max_temp + 30))) / 3;
     }
 
+    /** Venus is not part of the Mars end of game condition, so it is kept out of getTerraformingProgression() */
+    function getVenusProgression() {
+        if (!$this->isVenusVariant()) {
+            return 0;
+        }
+        $venus = $this->tokens->getTokenState("tracker_v");
+        $max_venus = $this->getRulesFor("tracker_v", "max");
+        return (100 * $venus) / $max_venus;
+    }
+
     function isCorporateEraVariant() {
         return $this->getGameStateValue("var_corporate_era") == 1;
     }
@@ -868,6 +878,11 @@ abstract class PGameXBody extends PGameMachine {
                     continue;
                 }
             }
+            if ($id == "tracker_v") {
+                if (!$venus) {
+                    continue;
+                }
+            }
             $this->createTokenFromInfo($id, $info);
         }
     }
@@ -1020,7 +1035,11 @@ abstract class PGameXBody extends PGameMachine {
 
     function evaluatePrecondition($cond, $owner, $tokenid, string $extracontext = null) {
         if ($cond) {
-            $valid = $this->evaluateExpression($cond, $owner, $tokenid, ["wilds" => []]);
+            // wild tags count towards any single tag requirement, but expressions that need several different
+            // tags (Advanced Ecosystems, Sister Planet Support...) add tagWild themselves, so wilds must not be
+            // added to each term as well
+            $wilds = str_contains($cond, "tagWild") ? null : [];
+            $valid = $this->evaluateExpression($cond, $owner, $tokenid, ["wilds" => $wilds]);
             if (!$valid) {
                 $delta = $this->tokens->getTokenState("tracker_pdelta_{$owner}") ?? 0;
                 // there is one more stupid event card that has temp delta effect
@@ -1032,8 +1051,8 @@ abstract class PGameXBody extends PGameMachine {
                 }
                 if ($delta) {
                     $valid =
-                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => $delta, "wilds" => []]) ||
-                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => -$delta, "wilds" => []]);
+                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => $delta, "wilds" => $wilds]) ||
+                        $this->evaluateExpression($cond, $owner, $tokenid, ["mods" => -$delta, "wilds" => $wilds]);
                 }
                 if (!$valid) {
                     return false;
@@ -1218,7 +1237,7 @@ abstract class PGameXBody extends PGameMachine {
                 return $value;
             }
             $mods = array_get($options, "mods", 0);
-            if ($x == "t") {
+            if ($x == "t" || $x == "v") {
                 $mods = $mods * 2;
             }
             return $value + $mods;
@@ -1259,14 +1278,6 @@ abstract class PGameXBody extends PGameMachine {
             $value = $this->tokens->getTokenState("tracker_{$x}_{$owner}");
             if (startsWith($x, "tag")) {
                 $wilds = array_get($options, "wilds", null);
-
-                if ($context == "card_main_135") {
-                    // advanced ecosystems
-                    // special expression one of each tag
-                    //((tagMicrobe>0) & (tagAnimal>0)) & (tagPlant>0)
-                    // do not add wilds in this case
-                    $wilds = null;
-                }
                 if ($wilds !== null) {
                     $valueWild = $this->tokens->getTokenState("tracker_tagWild_{$owner}");
                     $value += $valueWild;
@@ -2374,6 +2385,12 @@ abstract class PGameXBody extends PGameMachine {
                 $this->putInEffectPool($color, $bonus);
             }
         }
+        if ($type == "v") {
+            // Aphrodite gains per step, so trigger once per step actually raised
+            for ($i = 0; $i < $steps; $i++) {
+                $this->triggerEffect($color, "raise_v", $token_id);
+            }
+        }
 
         $this->effect_incTerraformingRank($color, $steps, ["reason_tr" => $this->getReason("op_$type")]);
         if ($this->getTerraformingProgression() >= 100) {
@@ -3219,6 +3236,9 @@ abstract class PGameXBody extends PGameMachine {
             if (array_get($rules, "nc", 0) == 1) {
                 continue;
             } // not a real tag
+            if ($tag == "tagVenus" && !$this->isVenusVariant()) {
+                continue;
+            }
             $trackers[] = "tracker_{$tag}_{$owner}";
         }
         $count = 0;

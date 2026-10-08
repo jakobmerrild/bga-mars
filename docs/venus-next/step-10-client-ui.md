@@ -49,6 +49,9 @@ Overall plan: `VENUS_NEXT_PLAN.md`. Shared names and the full step list: `docs/v
    render readably (follow how Colonies cards without art render). In `src/CustomRenders.ts` add
    `ores(Floater,Venus)` and similar to the replacements next to `ores(Floater,Jovian)` (~lines 236-237,
    339) so icons show. Show Venus requirements (`v>=10` -> "10% Venus", `v<=14` -> "max 14% Venus").
+   Multi-tag requirements (Luxury Foods, Mining Quota, Omnicourt, Sister Planet Support, Solarnet) use the
+   `(((tagVenus>0) + (tagEarth>0)) + tagWild) >= 2` form; the tooltip only special-cases Advanced
+   Ecosystems (`card_main_135`, `src/GameXBody.ts` ~line 1585), so give these readable text too.
 4. **World Government prompt**: the `wgt` op's buttons say "World Government: raise Temperature / Oxygen /
    Ocean / Venus"; it is clear the active player chooses on behalf of the World Government.
 5. **Milestones/awards row** fits 6 entries in both layouts.

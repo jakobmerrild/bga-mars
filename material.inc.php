@@ -165,6 +165,16 @@ $this->token_types = [
         "param" => "t",
         "value" => -12,
     ],
+    "param_v_8" => [
+        "r" => "draw",
+        "param" => "v",
+        "value" => 8,
+    ],
+    "param_v_16" => [
+        "r" => "tr",
+        "param" => "v",
+        "value" => 16,
+    ],
     /* --- gen php begin cards_material --- */
 // #project cards
  'card_main_1' => [  //
@@ -5433,7 +5443,7 @@ $this->token_types = [
   'name' => clienttranslate('Luxury Foods'),
   't' => 1,
   'cost' => 8,
-  'pre' => '(((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild >= 3',
+  'pre' => '((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3',
   'vp' => 2,
   'deck' => 'Venus',
   'text' => clienttranslate('Requires that you have a Venus tag, an Earth tag and a Jovian tag.'),
@@ -5461,7 +5471,7 @@ $this->token_types = [
   'name' => clienttranslate('Mining Quota'),
   't' => 1,
   'cost' => 5,
-  'pre' => '(((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild >= 3',
+  'pre' => '((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3',
   'tags' => 'Building',
   'vp' => 0,
   'deck' => 'Venus',
@@ -5488,7 +5498,7 @@ $this->token_types = [
   'name' => clienttranslate('Omnicourt'),
   't' => 1,
   'cost' => 11,
-  'pre' => '(((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild >= 3',
+  'pre' => '((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3',
   'tags' => 'Building',
   'vp' => 0,
   'deck' => 'Venus',
@@ -5530,7 +5540,7 @@ $this->token_types = [
   'name' => clienttranslate('Sister Planet Support'),
   't' => 1,
   'cost' => 7,
-  'pre' => '((tagVenus>0) + (tagEarth>0)) + tagWild >= 2',
+  'pre' => '(((tagVenus>0) + (tagEarth>0)) + tagWild) >= 2',
   'tags' => 'Earth Venus',
   'vp' => 0,
   'deck' => 'Venus',
@@ -5544,7 +5554,7 @@ $this->token_types = [
   'name' => clienttranslate('Solarnet'),
   't' => 1,
   'cost' => 7,
-  'pre' => '(((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild >= 3',
+  'pre' => '((((tagVenus>0) + (tagEarth>0)) + (tagJovian>0)) + tagWild) >= 3',
   'vp' => 1,
   'deck' => 'Venus',
   'text' => clienttranslate('Requires Venus, Earth and Jovian tags. Draw 2 cards.'),
@@ -5857,6 +5867,20 @@ $this->token_types = [
   'deck' => 'Venus',
   'text' => clienttranslate('You start with 48 M€.'),
   'text_action' => clienttranslate('Use a blue card action that has already been used this generation.'),
+],
+// #standard project
+ 'card_stanproj_9' => [  //
+  'location' => 'display_main',
+  'create' => 1,
+  'type' => 'stanproj',
+  'count' => 1,
+  'num' => 9,
+  'name' => clienttranslate('Air Scrapping'),
+  't' => 0,
+  'r' => 'v',
+  'cost' => 15,
+  'deck' => 'Venus',
+  'text' => clienttranslate('For 15 M€ you get to increase Venus 1 step (and your TR)'),
 ],
     /* --- gen php end venus_material --- */
 
@@ -7154,6 +7178,10 @@ $this->token_types = [
   'type' => 't',
   'name' => clienttranslate('Increase Temperature'),
 ],
+ 'op_v' => [  //
+  'type' => 'v',
+  'name' => clienttranslate('Raise Venus'),
+],
  'op_tr' => [  //
   'type' => 'tr',
   'name' => clienttranslate('Increase TR'),
@@ -7399,6 +7427,14 @@ $this->token_types = [
   'state' => 0,
   'max'=>9,
 ],
+ 'tracker_v' => [  //
+  'type' => 'param',
+  'create' => 1,
+  'location' => 'params',
+  'name' => clienttranslate('Venus'),
+  'state' => 0,
+  'max'=>30,
+],
  'tracker_gen' => [  //
   'type' => 'param',
   'create' => 1,
@@ -7582,7 +7618,12 @@ $this->token_types = [
   'location' => 'player_tags_{COLOR}',
   'name' => clienttranslate('Count of played Events cards'),
 ],
-// #tracker_tagVenus|Count of Venus tags
+ 'tracker_tagVenus' => [  //
+  'type' => 'tracker badge',
+  'create' => 4,
+  'location' => 'player_tags_{COLOR}',
+  'name' => clienttranslate('Count of Venus tags'),
+],
  'tracker_resMicrobe' => [  //
   'type' => 'tracker badge',
   'create' => 4,
