@@ -12500,6 +12500,69 @@ html[lang=ar].mcompact #ebd-body.mobile_portrait .award_label {
   font-size: calc(var(--resourcesize) * 0.55);
 }
 
+/* Venus corporations have no scans: generated stand-in faces and logos
+   (misc/other/gen_venus_placeholders.py), one sprite slot per corp, card_corp_14..18.
+   The rules text is overlaid by .card_initial / .card_effect in both layouts. */
+.card.corp.card_corp_14 .card_bg {
+  background-image: url(img/venus/venus_corps.jpg);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 0) 0;
+}
+
+.corp_logo[data-corp=card_corp_14] {
+  background-image: url(img/venus/venus_corps_logo.png);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 0) 0;
+}
+
+.card.corp.card_corp_15 .card_bg {
+  background-image: url(img/venus/venus_corps.jpg);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 1) 0;
+}
+
+.corp_logo[data-corp=card_corp_15] {
+  background-image: url(img/venus/venus_corps_logo.png);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 1) 0;
+}
+
+.card.corp.card_corp_16 .card_bg {
+  background-image: url(img/venus/venus_corps.jpg);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 2) 0;
+}
+
+.corp_logo[data-corp=card_corp_16] {
+  background-image: url(img/venus/venus_corps_logo.png);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 2) 0;
+}
+
+.card.corp.card_corp_17 .card_bg {
+  background-image: url(img/venus/venus_corps.jpg);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 3) 0;
+}
+
+.corp_logo[data-corp=card_corp_17] {
+  background-image: url(img/venus/venus_corps_logo.png);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 3) 0;
+}
+
+.card.corp.card_corp_18 .card_bg {
+  background-image: url(img/venus/venus_corps.jpg);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 4) 0;
+}
+
+.corp_logo[data-corp=card_corp_18] {
+  background-image: url(img/venus/venus_corps_logo.png);
+  background-size: 500% 100%;
+  background-position: calc(100% / 4 * 4) 0;
+}
+
 /* latin */
 @font-face {
   font-family: "Tangerine";
