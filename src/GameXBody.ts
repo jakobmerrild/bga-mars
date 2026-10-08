@@ -287,7 +287,7 @@ class GameXBody extends GameTokens {
     const list = ["milestone", "award"];
     for (const type of list) {
       const mainnode = $(`display_${type}s`);
-      for (let x = 1; x <= 5; x++) {
+      for (let x = 1; this.gamedatas.token_types[`${type}_${x}`]; x++) {
         mainnode.insertAdjacentHTML(
           "beforeend",
           `<div id="${type}_${x}" class="${type} ${type}_${x} mileaw_item"><div id="${type}_label_${x}" class="${type}_label"></div></div>`

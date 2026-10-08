@@ -6725,6 +6725,13 @@
   background-position: -400% -100%;
 }
 
+.mileaw_display .mileaw_item.milestone_6,
+.mileaw_display .mileaw_item.award_6 {
+  background-image: none;
+  background-color: rgba(230, 200, 120, 0.85);
+  border-radius: 6%;
+}
+
 .milestone_label {
   bottom: 3%;
   position: absolute;

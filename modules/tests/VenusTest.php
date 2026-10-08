@@ -380,4 +380,110 @@ final class VenusTest extends TestCase {
         // Greenhouses / Energy Saving: city tiles in play
         $this->assertEquals(2, $m->evaluateExpression("all_city", PCOLOR));
     }
+
+    // Step 6 - Hoverlord milestone and Venuphile award
+
+    private function addFloaters(GameUT $m, string $card, int $count, string $color = PCOLOR) {
+        if ($m->tokens->getTokenLocation($card) != "tableau_$color") {
+            $m->dbSetTokenLocation($card, "tableau_$color", MA_CARD_STATE_ACTION_UNUSED);
+        }
+        for ($i = 0; $i < $count; $i++) {
+            $res = $m->createPlayerResource($color);
+            $m->tokens->moveToken($res, $card, 1);
+        }
+        $m->clean_cache();
+    }
+
+    private function claimStatus(GameUT $m, string $optype, string $target, string $color = PCOLOR) {
+        $op = $m->getOperationInstanceFromType($optype, $color);
+        $args = $op->argPrimaryDetails();
+        $this->assertArrayHasKey($target, $args);
+        return $args[$target]["q"];
+    }
+
+    public function testVenusOptionOnAddsHoverlordAndVenuphile() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 1);
+            $this->assertEquals("Hoverlord", $m->getTokenName("milestone_6"), "map $map");
+            $this->assertEquals("Venuphile", $m->getTokenName("award_6"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(6, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+            $this->assertEquals("display_milestones", $m->tokens->getTokenLocation("milestone_6"), "map $map");
+            $this->assertEquals("display_awards", $m->tokens->getTokenLocation("award_6"), "map $map");
+        }
+    }
+
+    public function testVenusMilestonesAbsentWithoutVenus() {
+        for ($map = 0; $map <= 4; $map++) {
+            $m = (new GameUT())->init($map, 0, 0);
+            $this->assertNull($m->tokens->getTokenInfo("milestone_6"), "map $map");
+            $this->assertNull($m->tokens->getTokenInfo("award_6"), "map $map");
+            $this->assertArrayNotHasKey("milestone_6", $m->token_types, "map $map");
+            $this->assertArrayNotHasKey("award_6", $m->token_types, "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("milestone_", "display_milestones"), "map $map");
+            $this->assertCount(5, $m->tokens->getTokensOfTypeInLocation("award_", "display_awards"), "map $map");
+        }
+    }
+
+    public function testHoverlordClaim() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        // Aerial Mappers and Deuterium Export hold floaters
+        $this->addFloaters($m, "card_main_213", 4);
+        $this->addFloaters($m, "card_main_221", 2);
+        $this->assertEquals(6, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_ERR_PREREQ, $this->claimStatus($m, "claim", "milestone_6"));
+        $this->addFloaters($m, "card_main_221", 1);
+        $this->assertEquals(7, $m->evaluateExpression("resFloater", PCOLOR));
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+
+        $marker = $m->createPlayerMarker(PCOLOR);
+        $m->tokens->moveToken($marker, "milestone_6", 1);
+        $m->tokens->setTokenState("milestone_6", 1);
+        $table = [];
+        $m->scoreAll($table);
+        $player_id = $m->getPlayerIdByColor(PCOLOR);
+        $this->assertEquals(5, $table[$player_id]["details"]["milestones"]["milestone_6"]["vp"]);
+        $this->assertEquals(5, $table[$player_id]["total_details"]["milestones"]);
+    }
+
+    public function testVenuphileAward() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->tokens->setTokenState("tracker_tagVenus_" . PCOLOR, 2);
+        $m->tokens->setTokenState("tracker_tagVenus_" . BCOLOR, 1);
+        $m->clean_cache();
+        $this->assertEquals(2, $m->evaluateExpression("tagVenus", PCOLOR));
+        $table = [];
+        $m->scoreAward("award_6", $table);
+        $p = $m->getPlayerIdByColor(PCOLOR);
+        $b = $m->getPlayerIdByColor(BCOLOR);
+        $this->assertEquals(1, $table[$p]["details"]["awards"]["award_6"]["place"]);
+        $this->assertEquals(5, $table[$p]["details"]["awards"]["award_6"]["vp"]);
+        $this->assertEquals(0, $table[$b]["details"]["awards"]["award_6"]["vp"]);
+    }
+
+    public function testMaxThreeMilestonesStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 10);
+        $this->addFloaters($m, "card_main_213", 7);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "claim", "milestone_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "milestone_$num", 1);
+            $m->tokens->setTokenState("milestone_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "claim", "milestone_6"));
+    }
+
+    public function testMaxThreeAwardsStillEnforcedWithSix() {
+        $m = (new GameUT())->init(0, 0, 1);
+        $m->setTrackerValue(PCOLOR, "m", 30);
+        $this->assertEquals(MA_OK, $this->claimStatus($m, "fund", "award_6"));
+        foreach ([1, 2, 3] as $num) {
+            $marker = $m->createPlayerMarker(BCOLOR);
+            $m->tokens->moveToken($marker, "award_$num", 1);
+            $m->tokens->setTokenState("award_$num", 2);
+        }
+        $this->assertEquals(MA_ERR_MAXREACHED, $this->claimStatus($m, "fund", "award_6"));
+    }
 }

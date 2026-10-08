@@ -4417,7 +4417,7 @@ var GameXBody = /** @class */ (function (_super) {
         for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
             var type = list_1[_i];
             var mainnode = $("display_".concat(type, "s"));
-            for (var x = 1; x <= 5; x++) {
+            for (var x = 1; this.gamedatas.token_types["".concat(type, "_").concat(x)]; x++) {
                 mainnode.insertAdjacentHTML("beforeend", "<div id=\"".concat(type, "_").concat(x, "\" class=\"").concat(type, " ").concat(type, "_").concat(x, " mileaw_item\"><div id=\"").concat(type, "_label_").concat(x, "\" class=\"").concat(type, "_label\"></div></div>"));
             }
         }
