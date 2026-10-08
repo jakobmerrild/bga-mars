@@ -1377,6 +1377,8 @@ final class VenusTest extends TestCase {
         $m->effect_playCard(PCOLOR, "card_main_258");
         $this->assertEquals("19nm", $m->getPayment(PCOLOR, "card_main_223"));
         $this->assertEquals("17nm", $m->getPayment(PCOLOR, "card_main_232")); // Io Sulphur Research
+        // discounts are per tag, like Valley Trust and Research: Venus Governor (Venus Venus, cost 4) is free
+        $this->assertEquals("nop", $m->getPayment(PCOLOR, "card_main_255"));
     }
 
     public function testVenusianAnimalsScienceTrigger() {
