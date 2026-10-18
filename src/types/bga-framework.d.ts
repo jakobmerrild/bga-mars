@@ -67,7 +67,18 @@ declare class Counter {
   disable(): void; // Sets value to "-"
 }
 
+declare interface BgaStateClass {
+  onEnteringState?(args: any, isCurrentPlayerActive: boolean): void;
+  onLeavingState?(args: any, isCurrentPlayerActive: boolean): void;
+  onPlayerActivationChange?(args: any, isCurrentPlayerActive: boolean): void;
+}
+
 declare class GameGui {
+  bga: {
+    states: {
+      register(state: string | number, stateClass: BgaStateClass): void;
+    };
+  };
   page_is_unloading: any;
   game_name: string;
   instantaneousMode: boolean;

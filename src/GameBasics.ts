@@ -46,6 +46,26 @@ class GameBasics extends GameGui {
     this.setupInfoPanel();
     this.setupNotifications();
     this.upldateColorMapping(".player-name *");
+    this.registerPrivateStateHooks(gamedatas);
+  }
+
+  /**
+   * When player is deactivated out of a private state (i.e. after draft pick) framework does not call
+   * game's onLeavingState, only the one of state class registered in bga.states, so we register one
+   * for each private state to keep laststate in sync, otherwise onUpdateActionButtons waits forever for onEnteringState
+   */
+  registerPrivateStateHooks(gamedatas: any) {
+    for (const state of Object.values<any>(gamedatas.gamestates ?? {})) {
+      if (state.type != "private") continue;
+      this.bga?.states?.register(state.name, {
+        onLeavingState: () => {
+          // on normal state change private_state is still set and game's onLeavingState was already called
+          if (this.gamedatas.gamestate.private_state != null) return;
+          this.onLeavingState(state.name);
+          this.laststate = this.gamedatas.gamestate.name;
+        }
+      });
+    }
   }
 
   // state hooks

@@ -64,6 +64,34 @@ var GameBasics = /** @class */ (function (_super) {
         this.setupInfoPanel();
         this.setupNotifications();
         this.upldateColorMapping(".player-name *");
+        this.registerPrivateStateHooks(gamedatas);
+    };
+    /**
+     * When player is deactivated out of a private state (i.e. after draft pick) framework does not call
+     * game's onLeavingState, only the one of state class registered in bga.states, so we register one
+     * for each private state to keep laststate in sync, otherwise onUpdateActionButtons waits forever for onEnteringState
+     */
+    GameBasics.prototype.registerPrivateStateHooks = function (gamedatas) {
+        var _this = this;
+        var _a, _b, _c;
+        var _loop_1 = function (state) {
+            if (state.type != "private")
+                return "continue";
+            (_c = (_b = this_1.bga) === null || _b === void 0 ? void 0 : _b.states) === null || _c === void 0 ? void 0 : _c.register(state.name, {
+                onLeavingState: function () {
+                    // on normal state change private_state is still set and game's onLeavingState was already called
+                    if (_this.gamedatas.gamestate.private_state != null)
+                        return;
+                    _this.onLeavingState(state.name);
+                    _this.laststate = _this.gamedatas.gamestate.name;
+                }
+            });
+        };
+        var this_1 = this;
+        for (var _i = 0, _d = Object.values((_a = gamedatas.gamestates) !== null && _a !== void 0 ? _a : {}); _i < _d.length; _i++) {
+            var state = _d[_i];
+            _loop_1(state);
+        }
     };
     // state hooks
     GameBasics.prototype.onEnteringState = function (stateName, args) {
@@ -1888,18 +1916,18 @@ var CardStack = /** @class */ (function () {
             if (bin)
                 _this.game.showHiddenContent(bin.id, _("Pile contents"));
         });
-        var _loop_1 = function (i) {
-            var layout = this_1.view_list[i];
-            var buttonstr = "<div id=\"btn_switch_".concat(this_1.div_id, "_").concat(layout, "\" class=\"stack_btn switch_").concat(layout, "\">\n      <div id=\"ddl_icon_").concat(this_1.div_id, "_").concat(layout, "\" class=\"stack_ddl_icon\"></div><div class=\"stack_ddl_label\">").concat(this_1.getViewLabel(layout), "</div></div>");
-            var laButton = dojo.place(buttonstr, "stack_dd_buttons_".concat(this_1.div_id));
-            $("ddl_icon_".concat(this_1.div_id, "_").concat(layout)).classList.add("fa", this_1.getIconClass(layout));
+        var _loop_2 = function (i) {
+            var layout = this_2.view_list[i];
+            var buttonstr = "<div id=\"btn_switch_".concat(this_2.div_id, "_").concat(layout, "\" class=\"stack_btn switch_").concat(layout, "\">\n      <div id=\"ddl_icon_").concat(this_2.div_id, "_").concat(layout, "\" class=\"stack_ddl_icon\"></div><div class=\"stack_ddl_label\">").concat(this_2.getViewLabel(layout), "</div></div>");
+            var laButton = dojo.place(buttonstr, "stack_dd_buttons_".concat(this_2.div_id));
+            $("ddl_icon_".concat(this_2.div_id, "_").concat(layout)).classList.add("fa", this_2.getIconClass(layout));
             laButton.addEventListener("click", function () {
                 _this.onSwitchView(layout);
             });
         };
-        var this_1 = this;
+        var this_2 = this;
         for (var i = 0; i < this.view_list.length; i++) {
-            _loop_1(i);
+            _loop_2(i);
         }
         $("stack_dd_buttons_".concat(this.div_id, "_close")).addEventListener("click", function (evt) {
             evt.stopPropagation();
@@ -2320,7 +2348,7 @@ var CustomAnimation = /** @class */ (function () {
     };
     CustomAnimation.prototype.moveResources = function (tracker, qty) {
         return __awaiter(this, void 0, void 0, function () {
-            var trk_item, delay, mark, htm, singleDur, sequenceDur, _loop_2, this_2, i;
+            var trk_item, delay, mark, htm, singleDur, sequenceDur, _loop_3, this_3, i;
             var _this = this;
             return __generator(this, function (_a) {
                 if (!this.areAnimationsPlayed())
@@ -2337,7 +2365,7 @@ var CustomAnimation = /** @class */ (function () {
                 htm = '<div id="%t" class="resmover">' + CustomRenders.parseActionsToHTML(trk_item, mark) + "</div>";
                 singleDur = this.getWaitDuration(500);
                 sequenceDur = this.getWaitDuration(200);
-                _loop_2 = function (i) {
+                _loop_3 = function (i) {
                     var tmpid = "tmp_" + String(Math.random() * 1000000000);
                     var visiblenode = "";
                     if (dojo.style("gameaction_status_wrap", "display") != "none") {
@@ -2360,7 +2388,7 @@ var CustomAnimation = /** @class */ (function () {
                     if (!$(destination) && destination.startsWith("alt_"))
                         destination = tracker;
                     dojo.place(htm.replace("%t", tmpid), origin_1);
-                    this_2.wait(delay).then(function () {
+                    this_3.wait(delay).then(function () {
                         var tempNode = $(tmpid);
                         if (tempNode) {
                             if (destination.startsWith("move_from_") && !dojo.byId(destination)) {
@@ -2374,9 +2402,9 @@ var CustomAnimation = /** @class */ (function () {
                     });
                     delay += sequenceDur;
                 };
-                this_2 = this;
+                this_3 = this;
                 for (i = 0; i < Math.abs(qty); i++) {
-                    _loop_2(i);
+                    _loop_3(i);
                 }
                 return [2 /*return*/, this.wait(Math.max(delay + singleDur, 900))]; // no more than 900ms to not cause timeout
             });
@@ -6467,13 +6495,13 @@ var GameXBody = /** @class */ (function (_super) {
                     this.addActionButton("button_" + opId, _("Confirm") + " " + count, function () { return _this.sendActionResolve(opId, {}, opInfo); });
                 }
                 else {
-                    var _loop_3 = function (i) {
-                        this_3.addActionButton("button_".concat(opId, "_").concat(i), i, function () { return _this.sendActionResolveWithCount(opId, i); });
+                    var _loop_4 = function (i) {
+                        this_4.addActionButton("button_".concat(opId, "_").concat(i), i, function () { return _this.sendActionResolveWithCount(opId, i); });
                     };
-                    var this_3 = this;
+                    var this_4 = this;
                     // counter select stub for now
                     for (var i = from == 0 ? 1 : from; i < count; i++) {
-                        _loop_3(i);
+                        _loop_4(i);
                     }
                     if (count >= 1) {
                         this.addActionButton("button_" + opId + "_max", count + " (" + _("max") + ")", function () {
@@ -6900,23 +6928,23 @@ var GameXBody = /** @class */ (function (_super) {
         }
         var allSkip = true;
         var numops = [];
-        var _loop_4 = function (i) {
+        var _loop_5 = function (i) {
             var opIdS = sortedOps[i];
             var opId = parseInt(opIdS);
             var opInfo = operations[opId];
-            this_4.completeOpInfo(opId, opInfo, xop, sortedOps.length);
+            this_5.completeOpInfo(opId, opInfo, xop, sortedOps.length);
             numops.push(opId);
             var opArgs = opInfo.args;
-            var name_7 = this_4.getButtonNameForOperation(opInfo);
+            var name_7 = this_5.getButtonNameForOperation(opInfo);
             var singleOrFirst = single || (ordered && i == 0);
-            this_4.updateVisualsFromOp(opInfo, opId);
+            this_5.updateVisualsFromOp(opInfo, opId);
             // update screen with activate slots for:
             // - single action
             // - first if ordered
             // - all if choice required (!ordered)
             if (singleOrFirst || !ordered) {
-                this_4.activateSlots(opInfo, singleOrFirst);
-                this_4.updateHandInformation(opInfo.args.info, opInfo.type);
+                this_5.activateSlots(opInfo, singleOrFirst);
+                this_5.updateHandInformation(opInfo.args.info, opInfo.type);
             }
             // if more than one action and they are no ordered add buttons for each
             // xxx add something for remaining ops in ordered case?
@@ -6924,22 +6952,22 @@ var GameXBody = /** @class */ (function (_super) {
                 // temp hack
                 if (opInfo.type === "passauto")
                     return "continue";
-                this_4.addActionButtonColor("button_".concat(opId), name_7, function () { return _this.onOperationButton(opInfo); }, (_b = (_a = opInfo.args) === null || _a === void 0 ? void 0 : _a.args) === null || _b === void 0 ? void 0 : _b.bcolor, opInfo.owner, opArgs.void);
+                this_5.addActionButtonColor("button_".concat(opId), name_7, function () { return _this.onOperationButton(opInfo); }, (_b = (_a = opInfo.args) === null || _a === void 0 ? void 0 : _a.args) === null || _b === void 0 ? void 0 : _b.bcolor, opInfo.owner, opArgs.void);
                 if (opArgs.void) {
-                    $("button_".concat(opId)).title = this_4.extractError(opInfo, _("Operation cannot be executed"));
+                    $("button_".concat(opId)).title = this_5.extractError(opInfo, _("Operation cannot be executed"));
                 }
             }
             if (!ordered && !chooseorder && i == 0) {
                 var tr = void 0;
                 if ((_c = opInfo.args) === null || _c === void 0 ? void 0 : _c.reason) {
-                    tr = this_4.getTr(opInfo.args.reason);
+                    tr = this_5.getTr(opInfo.args.reason);
                 }
                 else if (opInfo.data) {
                     var data = opInfo.data.split(":")[0];
-                    tr = this_4.getTokenName(data);
+                    tr = this_5.getTokenName(data);
                 }
                 if (tr) {
-                    this_4.setMainTitle(" [".concat(tr, "]"), true); // TODO
+                    this_5.setMainTitle(" [".concat(tr, "]"), true); // TODO
                 }
             }
             // add done (skip) when all optional
@@ -6947,9 +6975,9 @@ var GameXBody = /** @class */ (function (_super) {
                 allSkip = false;
             }
         };
-        var this_4 = this;
+        var this_5 = this;
         for (var i = 0; i < sortedOps.length; i++) {
-            _loop_4(i);
+            _loop_5(i);
         }
         if (allSkip && !single) {
             this.addActionButtonColor("button_skip", _("Skip All"), function () { return _this.sendActionSkip.apply(_this, numops); }, "red");
@@ -7012,21 +7040,21 @@ var GameXBody = /** @class */ (function (_super) {
         if (!operations)
             return; // XXX
         var sortedOps = Object.keys(operations);
-        var _loop_5 = function (i) {
+        var _loop_6 = function (i) {
             var opIdS = sortedOps[i];
             var opId = parseInt(opIdS);
             var opInfo = operations[opId];
-            this_5.completeOpInfo(opId, opInfo, args.op, sortedOps.length);
+            this_6.completeOpInfo(opId, opInfo, args.op, sortedOps.length);
             opInfo.ooturn = true;
             var opArgs = opInfo.args;
             if (opArgs.void)
                 return "continue";
-            var name_8 = this_5.getButtonNameForOperation(opInfo);
-            this_5.addActionButtonColor("button_".concat(opId), name_8, function () { return _this.onOperationButton(opInfo, false); }, (_b = (_a = opInfo.args) === null || _a === void 0 ? void 0 : _a.args) === null || _b === void 0 ? void 0 : _b.bcolor, opInfo.owner, opArgs.void);
+            var name_8 = this_6.getButtonNameForOperation(opInfo);
+            this_6.addActionButtonColor("button_".concat(opId), name_8, function () { return _this.onOperationButton(opInfo, false); }, (_b = (_a = opInfo.args) === null || _a === void 0 ? void 0 : _a.args) === null || _b === void 0 ? void 0 : _b.bcolor, opInfo.owner, opArgs.void);
         };
-        var this_5 = this;
+        var this_6 = this;
         for (var i = 0; i < sortedOps.length; i++) {
-            _loop_5(i);
+            _loop_6(i);
         }
     };
     GameXBody.prototype.addUndoButton = function () {
