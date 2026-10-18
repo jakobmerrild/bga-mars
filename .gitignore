@@ -115,5 +115,5 @@ src/css/*.map
 **/.~lock*
 **/*.swp
 
-tests/out.jsa
+tests/*.jsa
 .phpunit.result.cache
